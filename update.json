@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.4.0\n・横長ティザーが本当に「横長」になりました。物件種別・住所などの入力欄が横一列に並びます（これまでは幅が変わるだけで、中身は縦積みのままでした）\n・横長の幅は既定で本文いっぱいに。狭い場所やスマホでは自動的に縦積みへ切り替わります\n・縦ティザー（teaser-v）は従来どおり常に縦積みです"
+    "changelog": "1.4.1\n・1ページにティザーを何個置いても正しく動くようにしました。LPのように複数設置しても、それぞれ独立して動作します\n・複数設置したときにスタイルとスクリプトが個数分くり返し出力されていたのを、1回だけにしました（8個設置でページが約3分の1に軽くなります）"
   }
 }

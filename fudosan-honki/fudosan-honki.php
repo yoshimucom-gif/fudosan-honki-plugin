@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.4.0
+ * Version: 1.4.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.4.0');
+define('FHS_VER', '1.4.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1445,7 +1445,13 @@ function fhs_shortcode($atts = array()) {
     $ajax    = admin_url('admin-ajax.php');
     $privacy = fhs_opt('privacy_url');
     $terms   = fhs_opt('terms_url');
-    $uid     = 'fhs-' . uniqid();
+    /* 1ページに複数置かれる前提。uniqid() は同一リクエスト内で同じ値を返すことがあるため、
+       連番を足して確実に一意にする（idが重なると label が別のフォームの入力欄を指してしまう）。
+       CSSとJSは何個あっても最初の1回だけ出す。 */
+    static $seq = 0, $assets_done = false;
+    $uid     = 'fhs-' . uniqid() . '-' . (++$seq);
+    $need_assets = !$assets_done;
+    $assets_done = true;
 
     // compact では必須項目だけに絞る（メインビジュアル横などに収めるため）
     $cust_fields = fhs_visible_fields('customer',  fhs_customer_fields(),  $compact);
@@ -1553,8 +1559,10 @@ function fhs_shortcode($atts = array()) {
     };
 
     ob_start(); ?>
-<div class="fhs-wrap fhs-design-<?php echo esc_attr($design); ?>" id="<?php echo esc_attr($uid); ?>"<?php
+<div class="fhs-wrap fhs-design-<?php echo esc_attr($design); ?>" id="<?php echo esc_attr($uid); ?>"
+  data-fhs-teaser="<?php echo $teaser ? '1' : ''; ?>" data-fhs-target="<?php echo esc_attr($t_target); ?>"<?php
   echo $t_width ? ' style="max-width:' . esc_attr($t_width) . '"' : ''; ?>>
+<?php if ($need_assets): ?>
   <style>
     .fhs-wrap{--fhs-brand:<?php echo esc_attr($c_brand); ?>;--fhs-brand-rgb:<?php echo esc_attr($c_brand_rgb); ?>;--fhs-btn-text:<?php echo esc_attr($c_btn_text); ?>;--fhs-title:<?php echo esc_attr($c_title); ?>;--fhs-badge-bg:<?php echo esc_attr($c_badge); ?>;--fhs-ink:#1a1f36;--fhs-muted:#6b7280;--fhs-line:#e5e7eb;width:100%;max-width:none;margin:0;color:var(--fhs-ink);font-family:inherit;line-height:1.75;font-size:17px}
     /* テーマ側が box-sizing を当てているかどうかで、余白ぶん高さ・幅がずれる。
@@ -1626,6 +1634,7 @@ function fhs_shortcode($atts = array()) {
 
     /* デザイン: card */
     .fhs-design-card .fhs-card{background:#fff;border:1px solid var(--fhs-line);border-radius:14px;padding:24px 22px;box-shadow:0 4px 18px rgba(16,24,40,.06)}
+<?php // ここから下はティザー用。以降のスタイルも含めて、このブロックはページに1回だけ出力される ?>
 
     /* ============ ティザー（記事内などに置く入口フォーム） ============ */
     .fhs-design-teaser .fhs-card,.fhs-design-teaser-v .fhs-card{background:#fff;border:1px solid var(--fhs-line);border-radius:14px;padding:22px 22px 24px;box-shadow:0 8px 28px rgba(16,24,40,.10)}
@@ -1690,6 +1699,7 @@ function fhs_shortcode($atts = array()) {
     .fhs-resume b{color:var(--fhs-brand);font-weight:800}
     .fhs-resume span{color:var(--fhs-muted);font-size:14px}
   </style>
+<?php endif; /* $need_assets */ ?>
 
   <div class="fhs-card fhs-form-card">
 <?php if ($glued && current_user_can('manage_options')): ?>
@@ -1841,14 +1851,17 @@ function fhs_shortcode($atts = array()) {
   <div class="fhs-card fhs-result" style="display:none"></div>
 </div>
 
+<?php if ($need_assets): ?>
 <script>
 (function(){
+  /* このスクリプトはページに1回だけ出力し、ページ内のフォームを全部まとめて初期化する。
+     LPのようにティザーを何個も置いても、重いJSが人数分ぶら下がらないようにするため。 */
+  if (window.fhsFormsReady) return;
+  window.fhsFormsReady = true;
+
   var AJAX = <?php echo wp_json_encode($ajax); ?>;
   var NONCE = <?php echo wp_json_encode($nonce); ?>;
   var LOADED_AT = Date.now();   // ページキャッシュがあってもJS側で計測すれば正しく効く
-  var WRAP_ID = <?php echo wp_json_encode($uid); ?>;
-  var TEASER  = <?php echo $teaser ? 'true' : 'false'; ?>;
-  var TARGET  = <?php echo wp_json_encode($t_target); ?>;
   var HANDOFF_KEY = 'fhs_handoff';
 
   /* ★ティザーからの引き継ぎは sessionStorage で行う（URLのクエリには載せない）。
@@ -1865,11 +1878,13 @@ function fhs_shortcode($atts = array()) {
     } catch (e) { return null; }   // 使えない環境では引き継ぎ無しとして扱う
   }
 
-  function init(){
-  var wrap = document.getElementById(WRAP_ID);
+  function init(wrap){
   if (!wrap || wrap.getAttribute('data-fhs-init')) return;
   wrap.setAttribute('data-fhs-init', '1');
+  var TEASER = wrap.getAttribute('data-fhs-teaser') === '1';
+  var TARGET = wrap.getAttribute('data-fhs-target') || '';
   var form = wrap.querySelector('.fhs-form'), errBox = wrap.querySelector('.fhs-errors');
+  if (!form) return;
   var formCard = wrap.querySelector('.fhs-form-card'), resultCard = wrap.querySelector('.fhs-result');
   var btn = wrap.querySelector('.fhs-submit');
   var SUBMIT_LABEL = btn ? btn.textContent : '送信';
@@ -2090,13 +2105,17 @@ function fhs_shortcode($atts = array()) {
     resultCard.scrollIntoView({ behavior:'smooth', block:'start' });
   }
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+
+  function initAll(){
+    Array.prototype.forEach.call(document.querySelectorAll('.fhs-wrap'), init);
   }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
+  else initAll();
+  // 戻る操作からの復帰や、後から差し込まれたフォームにも効かせる
+  window.addEventListener('pageshow', initAll);
 })();
 </script>
+<?php endif; /* $need_assets */ ?>
 <?php
     return ob_get_clean();
 }
