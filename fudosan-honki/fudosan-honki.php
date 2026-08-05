@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.4.1');
+define('FHS_VER', '1.5.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -123,6 +123,19 @@ function fhs_teaser_fields() {
         'purpose' => array('label' => 'ご事情・売却の理由', 'type' => 'select', 'opts' => 'purpose'),
         'timing'  => array('label' => '売却をご希望の時期', 'type' => 'select', 'opts' => 'timing'),
     );
+}
+
+/** 「無料, 地場優良企業対応, 1社査定」のような文字列をタグの配列に。
+ *  半角/全角のカンマ、読点、縦棒のどれでも区切れるようにする（書き方で迷わせない）。 */
+function fhs_split_tags($raw) {
+    $parts = preg_split('/[,，、|｜]+/u', (string)$raw);   // 半角/全角カンマ・読点・縦棒
+    if (!is_array($parts)) return array();
+    $out = array();
+    foreach ($parts as $p) {
+        $p = trim($p);
+        if ($p !== '') $out[] = $p;
+    }
+    return $out;
 }
 
 /** fields="ptype,address" を検証済みの順序付きリストに（既定は物件種別＋住所） */
@@ -358,6 +371,9 @@ function fhs_sanitize_options($in) {
         'third_party'      => !empty($in['third_party'])    ? '1' : '0',
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
         'logo_url'         => esc_url_raw($in['logo_url'] ?? ''),
+        // ティザーの見出しまわり（空欄なら表示しない）
+        'teaser_badge'     => sanitize_text_field($in['teaser_badge'] ?? ''),
+        'teaser_tags'      => sanitize_text_field($in['teaser_tags'] ?? ''),
         // 自動返信メール
         'mail_subject'     => sanitize_text_field($in['mail_subject'] ?? ''),
         'mail_body'        => sanitize_textarea_field($in['mail_body'] ?? ''),
@@ -806,8 +822,21 @@ function fhs_settings_page() {
             </div>
 
             <div class="fhs-tabpanel" data-tab="style" style="display:none">
-            <h3>見出しのアイコン</h3>
+            <h3>ティザーの見出し</h3>
+            <p class="description">記事に置く入口フォーム（ティザー）の見出しまわりの設定です。<strong>空欄にした項目は表示されません。</strong></p>
             <table class="form-table">
+                <tr><th>バッジ</th><td>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[teaser_badge]" value="<?php echo esc_attr(fhs_opt('teaser_badge')); ?>" size="30" placeholder="例：無料・秘密厳守">
+                    <p class="description">見出しの左（縦のときは上）に出る小さなバッジ。空欄なら表示しません。</p>
+                </td></tr>
+                <tr><th>メリットのタグ</th><td>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[teaser_tags]" value="<?php echo esc_attr(fhs_opt('teaser_tags')); ?>" size="60" placeholder="例：無料, 地場優良企業対応, 1社査定">
+                    <p class="description">
+                        見出しの右（縦のときは下）に並ぶタグ。<strong>カンマ（,）で区切ります</strong>（、や | でも構いません）。<br>
+                        <strong>3つくらいまでが読みやすい</strong>です。空欄なら表示しません。<br>
+                        例：<code>無料, 地場優良企業対応, 1社査定</code> ／ <code>しつこい営業なし, 最短即日, 相談だけOK</code>
+                    </p>
+                </td></tr>
                 <tr><th>アイコン画像</th><td>
                     <?php $logo = fhs_opt('logo_url'); ?>
                     <div class="fhs-logofield">
@@ -819,11 +848,12 @@ function fhs_settings_page() {
                       <button type="button" class="button" id="fhs-logo-clear">消す</button>
                     </div>
                     <p class="description">
-                        会社ロゴやファビコンなど。<strong>ティザーの見出しの左に小さく表示されます</strong>（高さは見出しに合わせて自動調整）。<br>
-                        正方形に近い画像がきれいに収まります。ショートコードで <code>logo="画像URL"</code> を指定すると、そのフォームだけ差し替えられます。
+                        会社ロゴやファビコンなど。<strong>見出しの左に小さく表示されます</strong>（高さは見出しに合わせて自動調整）。<br>
+                        正方形に近い画像がきれいに収まります。空欄なら表示しません。
                     </p>
                 </td></tr>
             </table>
+            <p class="description">いずれも、ショートコードで <code>badge="…"</code> <code>tags="…"</code> <code>logo="…"</code> を指定すると、そのフォームだけ差し替えられます。</p>
 
             <h3>フォームの色</h3>
             <p class="description">カラーコード（<code>#1f6feb</code> のような6桁）を直接入力できます。左の四角を押すとカラーピッカーからも選べます。</p>
@@ -884,7 +914,9 @@ function fhs_settings_page() {
                     <span class="description">狭くすると入力欄は自動的に縦積みへ切り替わります（おおむね560px以下から）。</span></td></tr>
                 <tr><td><code>title</code></td><td>見出し（省略時：60秒でかんたん入力）</td></tr>
                 <tr><td><code>subtitle</code></td><td>小見出し（省略時は表示なし）</td></tr>
-                <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
+                <tr><td><code>badge</code></td><td>見出しの左（縦のときは上）のバッジ。<strong>ふだんは「デザイン」タブで設定</strong>し、ここではそのフォームだけ変えたいときに使います。<code>badge=""</code> でそのフォームだけ非表示</td></tr>
+                <tr><td><code>tags</code></td><td>見出しの右（縦のときは下）に並ぶメリットのタグ。カンマ区切り。例：<code>tags="無料,地場優良企業対応,1社査定"</code><br>
+                    <span class="description">こちらも「デザイン」タブで設定すれば全ティザーに反映されます。</span></td></tr>
                 <tr><td><code>steps</code></td><td><code>steps="0"</code> で「STEP 1」「STEP 2」の表記を消す</td></tr>
                 <tr><td><code>logo</code></td><td>見出しの左に出すアイコン画像のURL。<strong>ふだんは「デザイン」タブで設定すれば全部のティザーに出ます</strong>ので、ここで指定するのは<strong>そのフォームだけ画像を変えたいとき</strong>です</td></tr>
                 <tr><td><code>note</code></td><td>フォーム下の小さな注記。<strong><code>|</code>（縦棒）で改行</strong>できます<br>
@@ -1400,7 +1432,7 @@ function fhs_shortcode($atts = array()) {
         'design' => 'default', 'button' => '',
         // ティザー用
         'url' => '', 'title' => '', 'subtitle' => '', 'note' => '', 'fields' => '',
-        'logo' => '', 'badge' => '', 'steps' => '1', 'width' => '',
+        'logo' => '', 'badge' => '', 'steps' => '1', 'width' => '', 'tags' => '',
     ), $atts, 'fudosan_honki');
     $design  = in_array($a['design'], array('default', 'compact', 'card', 'teaser', 'teaser-v'), true) ? $a['design'] : 'default';
     $compact = ($design === 'compact');
@@ -1420,7 +1452,11 @@ function fhs_shortcode($atts = array()) {
         : array('入力内容は次のページに引き継がれます。', 'この時点ではまだ送信されません。');
     // アイコンは設定のものを使い、ショートコードで指定があればそちらを優先する
     $t_logo   = $a['logo']     !== '' ? esc_url_raw($a['logo'])             : fhs_opt('logo_url', '');
-    $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge'])    : '無料・秘密厳守';
+    /* バッジとタグは「設定画面で決めて全ティザーに反映」が基本。
+       ショートコードで指定があればそのフォームだけ上書き。
+       どちらも空なら表示しない（既定の文言は持たせない）。 */
+    $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge']) : fhs_opt('teaser_badge', '');
+    $t_tags   = fhs_split_tags(isset($atts['tags']) ? $a['tags'] : fhs_opt('teaser_tags', ''));
     $t_steps  = ($a['steps'] !== '0' && $a['steps'] !== '');
     $t_fields = $teaser ? fhs_parse_teaser_fields($a['fields']) : array();
 
@@ -1674,11 +1710,15 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-tcta{flex:1 1 100%;display:flex;flex-direction:column;align-items:center}
     .fhs-design-teaser .fhs-tcta button{max-width:520px;margin-top:6px}
     /* 横長は見出しも1行にまとめる（バッジ＋見出しを横並び。狭ければ折り返す） */
-    .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px}
+    .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px}
     .fhs-design-teaser .fhs-tbadge-row{margin-bottom:0}
+    .fhs-design-teaser .fhs-ttags{margin-top:0}
     .fhs-design-teaser .fhs-tsub{flex:1 1 100%;margin-top:0}
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
+    /* 見出しの横に並べるメリットのタグ */
+    .fhs-ttags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:9px}
+    .fhs-ttag{font-size:12px;font-weight:700;color:var(--fhs-brand);background:rgba(var(--fhs-brand-rgb),.09);border:1px solid rgba(var(--fhs-brand-rgb),.28);border-radius:999px;padding:5px 11px;line-height:1.3;white-space:nowrap}
     .fhs-tbadge{display:inline-block;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
     .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.8;text-align:center;text-wrap:pretty}
     .fhs-tnote span{display:block}
@@ -1720,6 +1760,13 @@ function fhs_shortcode($atts = array()) {
           <div class="fhs-tbadge-row"><span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span></div>
 <?php endif; ?>
           <div class="fhs-ttitle"><?php if ($t_logo): ?><img class="fhs-ticon" src="<?php echo esc_url($t_logo); ?>" alt="<?php echo esc_attr(fhs_opt('operator_name', '')); ?>"><?php endif; ?><?php echo esc_html($t_title); ?></div>
+<?php if ($t_tags): ?>
+          <div class="fhs-ttags">
+<?php foreach ($t_tags as $tag): ?>
+            <span class="fhs-ttag"><?php echo esc_html($tag); ?></span>
+<?php endforeach; ?>
+          </div>
+<?php endif; ?>
 <?php if ($t_sub !== ''): ?>
           <div class="fhs-tsub"><?php echo esc_html($t_sub); ?></div>
 <?php endif; ?>
