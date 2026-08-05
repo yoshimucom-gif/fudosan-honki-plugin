@@ -39,8 +39,28 @@ fudosan-honki-wp/
 ```
 
 - 識別子: 定数 `FHS_*` / 関数 `fhs_*` / CSS `fhs-*` / テーブル `wp_fudosan_honki_leads`
-- ショートコード: `[fudosan_honki]`（`design="compact"` / `design="card"`、`button="..."`）
+- ショートコード: `[fudosan_honki]`（`design="compact" | "card" | "teaser" | "teaser-v"`、`button="..."`）
 - 通信: `admin-ajax.php` 経由（SiteGuard等でREST APIが無効な環境でも動く）
+
+## ティザー（記事に置く入口フォーム）
+
+```
+[fudosan_honki design="teaser"   url="/satei/"]   横長（記事の途中・記事末）
+[fudosan_honki design="teaser-v" url="/satei/"]   縦・幅440px（サイドバー）
+```
+
+2〜3項目だけ聞いて査定ページへ送る。物件種別は**タイルを1タップ**で選ぶ形（セレクトより離脱が少ない）。
+`fields` で聞く項目と順番を指定（`ptype` / `address` / `survey` / `purpose` / `timing`）。
+`title` `subtitle` `badge` `steps` `logo` `note` `button` で見せ方を調整できる。
+
+**引き継ぎは `sessionStorage`（同一タブ）で行い、URLのクエリには一切載せない。**
+物件住所という個人に結びつく情報をURLに置くと、ブラウザ履歴や外部サイトへのリファラに残るため。
+サーバー側でHTMLに焼き込む方式も採らない（ページキャッシュが効くと「最初に開いた人の入力値」が
+他の訪問者に配られる）。**お名前・電話番号・メールはティザーに置けない仕様**にしている
+（個人情報は、利用目的の明示と同意チェックがある本フォームでのみ受け取る）。
+
+遷移先では引き継いだ値を復元し、種別グループを開き、「↓ 続きはこちらから（あとN項目）」の
+バナーを出して最初の未入力欄までスクロールする。申し込み完了時に引き継ぎデータを破棄する。
 
 ## リリース手順
 

@@ -32,6 +32,35 @@
    [fudosan_honki design="card"]    全項目を枠＋影のカードで表示
    属性: button="ボタン文言"
 
+   ■ ティザー（記事に置く入口フォーム）
+   [fudosan_honki design="teaser"   url="/satei/"]  横長。記事の途中・記事末に
+   [fudosan_honki design="teaser-v" url="/satei/"]  縦（幅440px）。サイドバーに
+
+   2〜3項目だけ聞いて、続きは査定ページで書いてもらう形です。
+   入力内容は査定ページに自動で引き継がれ、「↓ 続きはこちらから」と
+   案内して次に書く欄まで自動でスクロールします（あと何項目かも表示）。
+   物件種別はタイルを1タップで選べます。
+
+   属性:
+     url      必須。遷移先＝[fudosan_honki] を貼った査定ページのURL
+     fields   聞く項目と順番。ptype / address / survey / purpose / timing
+              から選ぶ（省略時 ptype,address）
+     title    見出し（省略時：60秒でかんたん入力）
+     subtitle 小見出し
+     badge    ボタン上のバッジ（省略時：無料・秘密厳守。badge="" で非表示）
+     steps    steps="0" で「STEP 1」表記を消す
+     logo     ロゴ画像URL
+     note     フォーム下の注記
+     button   ボタンの文言
+
+   例: [fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]
+
+   ※ お名前・電話番号・メールはティザーには置けません。
+     個人情報は、利用目的の明示と同意チェックがある査定ページで
+     受け取る決まりにしているためです。
+   ※ 引き継ぎはブラウザ内（sessionStorage）で行い、URLには何も付けません。
+     物件の住所がブラウザ履歴や外部サイトへのリファラに残らないようにするためです。
+
 
 ■ 設定タブ
    基本設定       : 運営者情報・送信元/通知先メール・冒頭の案内文・ポリシーURL

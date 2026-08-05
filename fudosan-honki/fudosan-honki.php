@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.0.0');
+define('FHS_VER', '1.1.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -106,6 +106,39 @@ function fhs_property_fields() {
             array('key'=>'current_use',   'label'=>'現況',              'type'=>'select',  'def'=>'opt', 'opts'=>'current_use'),
         ),
     );
+}
+
+/**
+ * ティザー（記事内などに置く短い入口フォーム）に出せる項目。
+ *
+ * ★お名前・フリガナ・電話番号・メールは意図的に含めない。
+ *   ティザーは同意チェックの前段であり、個人情報を受け取る画面ではないため。
+ *   （個人情報を受け取るのは、利用目的の明示と同意チェックがある本フォームだけにする）
+ */
+function fhs_teaser_fields() {
+    return array(
+        'ptype'   => array('label' => '物件種別',          'type' => 'ptype'),
+        'address' => array('label' => '物件の住所',        'type' => 'text',   'ph' => '例：東京都渋谷区〇〇1-2-3'),
+        'survey'  => array('label' => 'ご希望の査定方法',   'type' => 'select', 'opts' => 'survey'),
+        'purpose' => array('label' => 'ご事情・売却の理由', 'type' => 'select', 'opts' => 'purpose'),
+        'timing'  => array('label' => '売却をご希望の時期', 'type' => 'select', 'opts' => 'timing'),
+    );
+}
+
+/** fields="ptype,address" を検証済みの順序付きリストに（既定は物件種別＋住所） */
+function fhs_parse_teaser_fields($raw) {
+    $known = fhs_teaser_fields();
+    $out = array();
+    foreach (explode(',', (string)$raw) as $k) {
+        $k = trim($k);
+        if ($k !== '' && isset($known[$k]) && !in_array($k, $out, true)) $out[] = $k;
+    }
+    return $out ? $out : array('ptype', 'address');
+}
+
+/** ティザーの項目キー → 本フォームでの入力欄名（引き継ぎで同じ欄に流し込むため） */
+function fhs_teaser_form_name($key) {
+    return in_array($key, array('ptype', 'address'), true) ? $key : 'situation_' . $key;
 }
 
 /** 設定・検証で使うグループ一覧（キーはモード保存とPOSTキーの接頭辞） */
@@ -738,9 +771,40 @@ function fhs_settings_page() {
                     <td><code>[fudosan_honki design="compact"]</code><br><span class="description">必須項目のみ・幅440pxのカード。</span></td></tr>
                 <tr><td><strong>カード</strong></td>
                     <td><code>[fudosan_honki design="card"]</code><br><span class="description">全項目を枠＋影のカードで表示。</span></td></tr>
+                <tr style="background:#fffbe6"><td><strong>ティザー（横長）</strong><br><span class="description">記事の途中・記事末</span></td>
+                    <td><code>[fudosan_honki design="teaser" url="/satei/"]</code><br>
+                        <span class="description"><strong>2〜3項目だけ</strong>入力してもらい、ボタンで <code>url</code> のページへ。入力値は自動で引き継がれます。物件種別は<strong>タイルを1タップ</strong>で選べます。</span></td></tr>
+                <tr style="background:#fffbe6"><td><strong>ティザー（縦）</strong><br><span class="description">サイドバー・記事末</span></td>
+                    <td><code>[fudosan_honki design="teaser-v" url="/satei/"]</code><br>
+                        <span class="description">同じ内容を幅440pxの縦カードで。</span></td></tr>
                 </tbody>
             </table>
-            <p class="description">属性：<code>button</code>（ボタン文言）が使えます。例：<code>[fudosan_honki button="無料で査定を依頼する"]</code></p>
+
+            <h3>ティザー（入口フォーム）の使い方</h3>
+            <p class="description" style="background:#f0f6fc;border-left:4px solid #2271b1;padding:10px 12px;max-width:900px">
+                いきなり全項目のフォームを見せると身構えられてしまいます。<strong>記事の中には「2〜3項目だけのティザー」を置き、
+                続きは査定ページで書いてもらう</strong>のが定石です。<br>
+                ティザーで入力した内容は査定ページに<strong>自動で引き継がれ</strong>、「↓ 続きはこちらから」と案内して
+                <strong>次に書く欄まで自動でスクロール</strong>します。あと何項目で終わるかも表示されるので、離脱が減ります。
+            </p>
+            <table class="widefat striped" style="max-width:900px">
+                <thead><tr><th style="width:110px">属性</th><th>意味</th></tr></thead>
+                <tbody>
+                <tr><td><code>url</code></td><td><strong>必須。</strong>ボタンの遷移先＝<code>[fudosan_honki]</code> を貼った査定ページのURL。例：<code>url="/satei/"</code></td></tr>
+                <tr><td><code>fields</code></td><td>聞く項目と順番。<code>ptype</code>（物件種別）/ <code>address</code>（物件の住所）/ <code>survey</code>（査定方法）/ <code>purpose</code>（ご事情）/ <code>timing</code>（希望時期）から選ぶ。省略時は <code>ptype,address</code><br>
+                    <span class="description">※ <strong>お名前・電話番号・メールはティザーには置けません。</strong>個人情報は、利用目的の明示と同意チェックがある査定ページで受け取る決まりにしているためです。</span></td></tr>
+                <tr><td><code>title</code></td><td>見出し（省略時：60秒でかんたん入力）</td></tr>
+                <tr><td><code>subtitle</code></td><td>小見出し（省略時は表示なし）</td></tr>
+                <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
+                <tr><td><code>steps</code></td><td><code>steps="0"</code> で「STEP 1」「STEP 2」の表記を消す</td></tr>
+                <tr><td><code>logo</code></td><td>ロゴ画像URL（メディアにアップしてURLを貼る）。指定するとロゴ左・見出し右の横並びに</td></tr>
+                <tr><td><code>note</code></td><td>フォーム下の小さな注記（省略時：「入力内容は次のページに引き継がれます…」）</td></tr>
+                <tr><td><code>button</code></td><td>ボタンの文言（省略時：無料で査定を依頼する）</td></tr>
+                </tbody>
+            </table>
+            <p class="description">記入例：<br>
+                <code>[fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></p>
+            <p class="description">属性 <code>button</code> はどのデザインでも使えます。例：<code>[fudosan_honki button="無料で査定を依頼する"]</code></p>
 
             <h3>申し込み後の動き</h3>
             <ol>
@@ -1097,12 +1161,34 @@ add_shortcode('fudosan_honki', 'fhs_shortcode');
  *   [fudosan_honki]                  標準（全項目・幅100%・枠なし）
  *   [fudosan_honki design="compact"] コンパクト（必須のみ・カード・幅440px）
  *   [fudosan_honki design="card"]    全項目をカード（枠＋影）で表示
+ *   [fudosan_honki design="teaser"   url="/satei/"] 入口フォーム・横長（記事の途中に置く）
+ *   [fudosan_honki design="teaser-v" url="/satei/"] 入口フォーム・縦（サイドバー）
+ *
+ * ティザーは2〜3項目だけ聞いて url のページへ送る。入力値は sessionStorage で引き継ぐ
+ * （URLのクエリには載せない＝物件住所が履歴やリファラに残らないようにするため）。
  */
 function fhs_shortcode($atts = array()) {
-    $a = shortcode_atts(array('design' => 'default', 'button' => ''), $atts, 'fudosan_honki');
-    $design  = in_array($a['design'], array('default', 'compact', 'card'), true) ? $a['design'] : 'default';
+    $a = shortcode_atts(array(
+        'design' => 'default', 'button' => '',
+        // ティザー用
+        'url' => '', 'title' => '', 'subtitle' => '', 'note' => '', 'fields' => '',
+        'logo' => '', 'badge' => '', 'steps' => '1',
+    ), $atts, 'fudosan_honki');
+    $design  = in_array($a['design'], array('default', 'compact', 'card', 'teaser', 'teaser-v'), true) ? $a['design'] : 'default';
     $compact = ($design === 'compact');
-    $btn     = $a['button'] !== '' ? sanitize_text_field($a['button']) : '査定を申し込む';
+    $teaser  = ($design === 'teaser' || $design === 'teaser-v');   // 入口フォーム（本フォームへ引き継ぐ）
+    $btn     = $a['button'] !== '' ? sanitize_text_field($a['button'])
+                                   : ($teaser ? '無料で査定を依頼する' : '査定を申し込む');
+
+    // ティザーの見た目・引き継ぎ先
+    $t_target = $teaser ? esc_url_raw($a['url']) : '';
+    $t_title  = $a['title']    !== '' ? sanitize_text_field($a['title'])    : '60秒でかんたん入力';
+    $t_sub    = $a['subtitle'] !== '' ? sanitize_text_field($a['subtitle']) : '';
+    $t_note   = $a['note']     !== '' ? sanitize_text_field($a['note'])     : '';
+    $t_logo   = $a['logo']     !== '' ? esc_url_raw($a['logo'])             : '';
+    $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge'])    : '無料・秘密厳守';
+    $t_steps  = ($a['steps'] !== '0' && $a['steps'] !== '');
+    $t_fields = $teaser ? fhs_parse_teaser_fields($a['fields']) : array();
 
     $c_brand    = fhs_opt('color_brand', '#1f6feb');
     $c_btn_text = fhs_opt('color_btn_text', '#ffffff');
@@ -1141,6 +1227,46 @@ function fhs_shortcode($atts = array()) {
     if ($tp) {
         $agree_label = '上記の個人情報の取り扱い（' . esc_html($tp_name) . 'への提供を含む）に同意し、' . $agree_label;
     }
+
+    /** 物件種別のタイル選択（1タップで選べるようにする。セレクトより離脱が少ない） */
+    $render_ptype_tiles = function ($uid, $name = 'ptype') {
+        ob_start(); ?>
+        <div class="fhs-tiles" role="group">
+<?php foreach ($GLOBALS['FHS_PTYPE_LABEL'] as $k => $v):
+        $short = ($k === 'house') ? '一戸建て' : (($k === 'mansion') ? 'マンション' : '土地');
+        $tid = $uid . '-tile-' . $k; ?>
+          <input type="radio" name="<?php echo esc_attr($name); ?>" id="<?php echo esc_attr($tid); ?>" value="<?php echo esc_attr($k); ?>" class="fhs-tile-input">
+          <label class="fhs-tile" for="<?php echo esc_attr($tid); ?>"><?php echo esc_html($short); ?></label>
+<?php endforeach; ?>
+        </div>
+<?php return ob_get_clean();
+    };
+
+    /** ティザー1項目ぶんのHTML（STEP表記つき） */
+    $render_teaser_field = function ($key, $fd, $i, $uid) use ($render_ptype_tiles, $t_steps) {
+        $nm = fhs_teaser_form_name($key);
+        $id = $uid . '-t-' . $key;
+        ob_start(); ?>
+        <div class="fhs-tfield fhs-tfield-<?php echo esc_attr($key); ?>">
+          <label<?php echo $fd['type'] === 'ptype' ? '' : ' for="' . esc_attr($id) . '"'; ?>>
+<?php if ($t_steps): ?><span class="fhs-step">STEP <?php echo (int)$i; ?></span><?php endif; ?>
+            <?php echo esc_html($fd['label']); ?>
+          </label>
+<?php if ($fd['type'] === 'ptype'): ?>
+          <?php echo $render_ptype_tiles($uid, 'ptype'); ?>
+<?php elseif ($fd['type'] === 'select'): ?>
+          <select name="<?php echo esc_attr($nm); ?>" id="<?php echo esc_attr($id); ?>" class="fhs-typed">
+            <option value="">選択してください</option>
+<?php foreach (fhs_opt_list($fd['opts']) as $o): ?>
+            <option value="<?php echo esc_attr($o); ?>"><?php echo esc_html($o); ?></option>
+<?php endforeach; ?>
+          </select>
+<?php else: ?>
+          <input type="text" name="<?php echo esc_attr($nm); ?>" id="<?php echo esc_attr($id); ?>" class="fhs-typed" placeholder="<?php echo esc_attr(isset($fd['ph']) ? $fd['ph'] : ''); ?>">
+<?php endif; ?>
+        </div>
+<?php return ob_get_clean();
+    };
 
     /** 1項目ぶんのHTML（ラベル＋入力欄）。$prefix はPOSTキーの接頭辞 */
     $render_field = function ($fd, $prefix, $uid) {
@@ -1251,9 +1377,91 @@ function fhs_shortcode($atts = array()) {
 
     /* デザイン: card */
     .fhs-design-card .fhs-card{background:#fff;border:1px solid var(--fhs-line);border-radius:14px;padding:24px 22px;box-shadow:0 4px 18px rgba(16,24,40,.06)}
+
+    /* ============ ティザー（記事内などに置く入口フォーム） ============ */
+    .fhs-design-teaser .fhs-card,.fhs-design-teaser-v .fhs-card{background:#fff;border:1px solid var(--fhs-line);border-radius:14px;padding:22px 22px 24px;box-shadow:0 8px 28px rgba(16,24,40,.10)}
+    .fhs-design-teaser-v{max-width:440px}
+    .fhs-design-teaser .fhs-hint,.fhs-design-teaser-v .fhs-hint{display:none}
+    .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
+    .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}
+    .fhs-tsub{font-size:14px;color:var(--fhs-muted);margin-top:5px;line-height:1.6}
+    .fhs-thead.fhs-has-logo{display:flex;align-items:center;gap:14px;text-align:left}
+    .fhs-thead.fhs-has-logo .fhs-tlogo{flex:0 0 auto;line-height:0}
+    .fhs-thead.fhs-has-logo .fhs-tlogo img{display:block;max-height:56px;max-width:90px;width:auto;height:auto}
+    .fhs-thead.fhs-has-logo .fhs-ttexts{flex:1;min-width:0}
+    /* STEPバッジ */
+    .fhs-step{display:inline-block;background:#3a4a5e;color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:4px;padding:4px 8px;margin-right:9px;vertical-align:middle;line-height:1}
+    .fhs-wrap .fhs-tfield > label{display:block;font-weight:700;font-size:16px;color:#374151;margin:16px 0 8px}
+    /* 物件種別のタイル選択（1タップ） */
+    /* ★セレクタは .fhs-wrap 付きで書くこと。上の .fhs-wrap input / .fhs-wrap label より
+       詳細度が低いと width:100% や display:block に負け、隠したはずのラジオが
+       画面幅いっぱいに広がって横スクロールが出る。 */
+    .fhs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .fhs-wrap .fhs-tile-input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0;pointer-events:none}
+    .fhs-wrap .fhs-tile{display:flex;align-items:center;justify-content:center;text-align:center;background:#fff;border:2px solid #cbd5e1;border-radius:10px;padding:15px 8px;font-weight:700;font-size:16px;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,color .15s;margin:0;line-height:1.3;min-height:56px}
+    .fhs-wrap .fhs-tile:hover{border-color:rgba(var(--fhs-brand-rgb),.6)}
+    .fhs-wrap .fhs-tile-input:checked + .fhs-tile{border-color:var(--fhs-brand);background:rgba(var(--fhs-brand-rgb),.08);color:var(--fhs-brand)}
+    .fhs-wrap .fhs-tile-input:focus-visible + .fhs-tile{box-shadow:0 0 0 3px rgba(var(--fhs-brand-rgb),.25)}
+    /* 横長: 入力欄を横に並べる（狭ければ自動で縦積み） */
+    .fhs-design-teaser .fhs-trow{display:flex;flex-wrap:wrap;gap:0 20px;align-items:flex-start}
+    .fhs-design-teaser .fhs-tfield{flex:1 1 260px;min-width:0}
+    .fhs-design-teaser .fhs-tfield-ptype{flex:1 1 100%}
+    .fhs-design-teaser .fhs-tcta{flex:1 1 100%;display:flex;flex-direction:column;align-items:center}
+    .fhs-design-teaser .fhs-tcta button{max-width:520px}
+    /* ボタン上のリボンバッジ */
+    .fhs-tbadge{position:relative;top:12px;z-index:1;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1;box-shadow:0 1px 4px rgba(16,24,40,.08)}
+    .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.7;text-align:center}
+    .fhs-tdisc{color:var(--fhs-muted);font-size:12px;margin-top:10px;line-height:1.7;text-align:center}
+    .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px}
+    @media(max-width:560px){
+      .fhs-tiles{grid-template-columns:1fr;gap:8px}
+      .fhs-wrap .fhs-tile{min-height:0;padding:13px 8px}
+      .fhs-ttitle{font-size:19px}
+      .fhs-design-teaser .fhs-card,.fhs-design-teaser-v .fhs-card{padding:18px 16px 20px}
+      .fhs-thead.fhs-has-logo{display:block;text-align:center}
+      .fhs-thead.fhs-has-logo .fhs-tlogo{display:none}
+    }
+
+    /* 引き継ぎ後の「続きはこちらから」バナー */
+    .fhs-resume{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;background:rgba(var(--fhs-brand-rgb),.07);border:1px solid rgba(var(--fhs-brand-rgb),.22);border-left:4px solid var(--fhs-brand);border-radius:8px;padding:12px 14px;margin:26px 0 6px;font-size:15px}
+    .fhs-resume b{color:var(--fhs-brand);font-weight:800}
+    .fhs-resume span{color:var(--fhs-muted);font-size:14px}
   </style>
 
   <div class="fhs-card fhs-form-card">
+<?php if ($teaser): /* ===== 入口フォーム（ティザー）===== */ ?>
+<?php if (!$t_target && current_user_can('manage_options')): ?>
+    <div class="fhs-admin-warn"><strong>【この行は管理者にだけ見えています】</strong><br>
+      ティザーには遷移先の指定が必要です。<code>[fudosan_honki design="<?php echo esc_attr($design); ?>" url="/査定ページのURL/"]</code> のように <code>url</code> を追加してください。</div>
+<?php endif; ?>
+    <div class="fhs-errors"></div>
+    <form class="fhs-form">
+      <div class="fhs-thead<?php echo $t_logo ? ' fhs-has-logo' : ''; ?>">
+<?php if ($t_logo): ?>
+        <div class="fhs-tlogo"><img src="<?php echo esc_url($t_logo); ?>" alt=""></div>
+<?php endif; ?>
+        <div class="fhs-ttexts">
+          <div class="fhs-ttitle"><?php echo esc_html($t_title); ?></div>
+<?php if ($t_sub !== ''): ?>
+          <div class="fhs-tsub"><?php echo esc_html($t_sub); ?></div>
+<?php endif; ?>
+        </div>
+      </div>
+      <div class="fhs-trow">
+<?php $t_reg = fhs_teaser_fields(); $ti = 1;
+      foreach ($t_fields as $tk) { echo $render_teaser_field($tk, $t_reg[$tk], $ti++, $uid); } ?>
+        <div class="fhs-tcta">
+<?php if ($t_badge !== ''): ?>
+          <span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span>
+<?php endif; ?>
+          <button class="fhs-submit" type="submit"><?php echo esc_html($btn); ?></button>
+        </div>
+      </div>
+      <div class="fhs-tnote"><?php echo esc_html($t_note !== '' ? $t_note
+          : '入力内容は次のページに引き継がれます。この時点ではまだ送信されません。'); ?></div>
+      <div class="fhs-tdisc">担当者がお伝えする価格は参考価格の情報提供であり、不動産鑑定士による鑑定評価ではありません。</div>
+    </form>
+<?php else: /* ===== 通常のフォーム ===== */ ?>
 <?php $lead = fhs_opt('lead_text'); if ($lead !== ''): ?>
     <div class="fhs-lead"><?php echo esc_html($lead); ?></div>
 <?php endif; ?>
@@ -1334,7 +1542,9 @@ function fhs_shortcode($atts = array()) {
 
       <button class="fhs-submit" type="submit"><?php echo esc_html($btn); ?></button>
     </form>
+<?php endif; /* ===== 分岐ここまで ===== */ ?>
 
+<?php if (!$teaser): ?>
     <div class="fhs-disc">
       担当者がお伝えする価格は<strong>参考価格の情報提供</strong>であり、不動産鑑定士による<strong>鑑定評価ではありません</strong>。実際の売却価格を保証するものではありません。<strong>当社は宅地建物取引業者ではなく、売買の媒介・代理は行いません。</strong>
     </div>
@@ -1352,6 +1562,7 @@ function fhs_shortcode($atts = array()) {
 <?php endif; ?>
     </div>
 <?php endif; ?>
+<?php endif; /* !$teaser ここまで */ ?>
   </div>
 
   <div class="fhs-card fhs-result" style="display:none"></div>
@@ -1363,6 +1574,23 @@ function fhs_shortcode($atts = array()) {
   var NONCE = <?php echo wp_json_encode($nonce); ?>;
   var LOADED_AT = Date.now();   // ページキャッシュがあってもJS側で計測すれば正しく効く
   var WRAP_ID = <?php echo wp_json_encode($uid); ?>;
+  var TEASER  = <?php echo $teaser ? 'true' : 'false'; ?>;
+  var TARGET  = <?php echo wp_json_encode($t_target); ?>;
+  var HANDOFF_KEY = 'fhs_handoff';
+
+  /* ★ティザーからの引き継ぎは sessionStorage で行う（URLのクエリには載せない）。
+     物件の住所という個人に結びつく情報を URL に載せると、ブラウザの履歴や
+     外部サイトへのリファラに残ってしまうため。
+     サーバー側でHTMLに焼き込む方式も採らない（ページキャッシュが効くと
+     「最初に開いた人の入力値」が他の訪問者にも配られてしまう）。 */
+  function readHandoff(){
+    try {
+      var raw = sessionStorage.getItem(HANDOFF_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return (o && typeof o === 'object') ? o : null;
+    } catch (e) { return null; }   // 使えない環境では引き継ぎ無しとして扱う
+  }
 
   function init(){
   var wrap = document.getElementById(WRAP_ID);
@@ -1397,9 +1625,12 @@ function fhs_shortcode($atts = array()) {
     return req;
   }
 
+  var resumeBox = null;
+
   function updateFormState(){
+    if (TEASER) return;   // ティザーは引き継ぐだけなので、必須ガイドは動かさない
     Array.prototype.forEach.call(form.querySelectorAll('.fhs-next'), function(e){ e.classList.remove('fhs-next'); });
-    var req = currentRequired(), firstEmpty = null;
+    var req = currentRequired(), firstEmpty = null, remaining = 0;
     req.forEach(function(el){
       var b = badgeFor(el);
       var filled = !!(el.value && String(el.value).trim() !== '');
@@ -1407,18 +1638,49 @@ function fhs_shortcode($atts = array()) {
         if (filled) { b.classList.add('fhs-done'); b.textContent = '✓'; }
         else { b.classList.remove('fhs-done'); b.textContent = '必須'; }
       }
-      if (!filled && !firstEmpty) firstEmpty = el;
+      if (!filled) { remaining++; if (!firstEmpty) firstEmpty = el; }
     });
     if (firstEmpty) firstEmpty.classList.add('fhs-next');
+    if (resumeBox) {
+      if (remaining === 0) resumeBox.style.display = 'none';
+      else { resumeBox.style.display = ''; resumeBox.querySelector('span').textContent = 'あと' + remaining + '項目で完了です'; }
+    }
   }
 
   // 種別を選ぶと、その種別の入力欄だけ表示
   function switchType(){
+    if (TEASER) return;
     var pt = ptypeSel ? ptypeSel.value : '';
     Array.prototype.forEach.call(groups, function(g){
       g.style.display = (g.getAttribute('data-ptype') === pt) ? '' : 'none';
     });
     updateFormState();
+  }
+
+  /* 引き継ぎで来たときだけ出す「↓ 続きはこちらから」。
+     長いフォームの途中に飛ばされると、どこから書けばいいのか分からなくなるため。 */
+  function insertResumeBanner(){
+    var el = wrap.querySelector('.fhs-next');
+    if (!el) return;
+    var anchor = el;
+    while (anchor && anchor.parentNode !== form) anchor = anchor.parentNode;
+    if (!anchor) return;
+    var prev = anchor.previousElementSibling;
+    if (prev && prev.tagName === 'LABEL') anchor = prev;
+    resumeBox = document.createElement('div');
+    resumeBox.className = 'fhs-resume';
+    resumeBox.innerHTML = '<b>↓ 続きはこちらから</b><span></span>';
+    form.insertBefore(resumeBox, anchor);
+    updateFormState();
+  }
+
+  function scrollToFirstEmpty(){
+    var target = resumeBox || wrap.querySelector('.fhs-next') || btn;
+    if (!target) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(function(){
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    }, 120);
   }
 
   if (ptypeSel) ptypeSel.addEventListener('change', switchType);
@@ -1435,10 +1697,49 @@ function fhs_shortcode($atts = array()) {
   setTimeout(switchType, 250);
   window.addEventListener('pageshow', function(e){ if (e.persisted) switchType(); });
 
+  /* ティザーから引き継いだ入力値を復元する */
+  if (!TEASER) {
+    var HANDOFF = readHandoff();
+    if (HANDOFF && Object.keys(HANDOFF).length) {
+      var applyHandoff = function(){
+        Object.keys(HANDOFF).forEach(function(n){
+          var el = form.elements[n];
+          if (el && HANDOFF[n]) el.value = HANDOFF[n];
+        });
+        switchType();
+      };
+      applyHandoff();
+      /* ブラウザの自動入力は、こちらの復元より後に走って値を上書きすることがある。
+         戻る操作（bfcache）でも以前の入力値が復元される。引き継いだ値が正しいので取り戻す。 */
+      setTimeout(applyHandoff, 0);
+      setTimeout(applyHandoff, 250);
+      window.addEventListener('pageshow', function(e){ if (e.persisted) applyHandoff(); });
+      insertResumeBanner();
+      scrollToFirstEmpty();
+    }
+  }
+
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
+
+    /* ティザー: ここでは送信しない。入力値を持って本フォームのページへ移るだけ。 */
+    if (TEASER) {
+      var data = {};
+      Array.prototype.forEach.call(form.querySelectorAll('.fhs-typed, .fhs-tile-input'), function(el){
+        if (el.type === 'radio') { if (el.checked && el.value) data[el.name] = el.value; }
+        else if (el.value) data[el.name] = el.value;
+      });
+      try { sessionStorage.setItem(HANDOFF_KEY, JSON.stringify(data)); } catch (err) { /* 引き継げないだけ */ }
+      if (!TARGET) {
+        errBox.innerHTML = '<div class="fhs-err">遷移先のページが設定されていません。サイト管理者にお知らせください。</div>';
+        return;
+      }
+      window.location.href = TARGET;
+      return;
+    }
+
     if (SENDING) return;   // 送信中の再送信（連打・Enter連打）を止める
     SENDING = true;
     errBox.innerHTML = '';
@@ -1491,6 +1792,8 @@ function fhs_shortcode($atts = array()) {
   });
 
   function renderResult(d){
+    // 申し込みが完了したら引き継ぎデータは用済み。残すと次の訪問で古い値が復元されてしまう
+    try { sessionStorage.removeItem(HANDOFF_KEY); } catch (e) {}
     var rows = (d.name ? '<tr><th>お名前</th><td>'+esc(d.name)+' 様</td></tr>' : '')
       + (d.tel ? '<tr><th>電話番号</th><td>'+esc(d.tel)+'</td></tr>' : '')
       + '<tr><th>メール</th><td>'+esc(d.email)+'</td></tr>'

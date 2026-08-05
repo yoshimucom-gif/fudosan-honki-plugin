@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.0.0\n・初版。お名前・電話番号まで受け取る「本気査定」の申込フォームです\n・入力項目ごとに「必須／任意／非表示」を選べます\n・他社へ情報を渡す場合の同意文（個人情報保護法27条）をON/OFFで切り替えられます"
+    "changelog": "1.1.0\n・記事に置ける「ティザー（入口フォーム）」を追加しました。2〜3項目だけ入力してもらい、続きは査定ページで書いてもらう形です（横長・縦の2種類）\n・ティザーの入力内容は査定ページに自動で引き継がれ、「続きはこちらから」と案内して次に書く欄まで自動でスクロールします\n・物件種別をタイルで1タップ選択できるようにしました"
   }
 }
