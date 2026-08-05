@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.2.3
+ * Version: 1.3.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.2.3');
+define('FHS_VER', '1.3.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -335,6 +335,11 @@ add_action('admin_init', function () {
     register_setting('fhs_group', FHS_OPT, 'fhs_sanitize_options');
 });
 
+/* 設定画面で「メディアから選ぶ」を使えるようにする（画像選択ダイアログ） */
+add_action('admin_enqueue_scripts', function ($hook) {
+    if (strpos($hook, 'fudosan-honki') !== false) wp_enqueue_media();
+});
+
 function fhs_sanitize_options($in) {
     if (!is_array($in)) $in = array();
     $out = array(
@@ -352,6 +357,7 @@ function fhs_sanitize_options($in) {
         'show_note'        => !empty($in['show_note'])      ? '1' : '0',
         'third_party'      => !empty($in['third_party'])    ? '1' : '0',
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
+        'logo_url'         => esc_url_raw($in['logo_url'] ?? ''),
         // 自動返信メール
         'mail_subject'     => sanitize_text_field($in['mail_subject'] ?? ''),
         'mail_body'        => sanitize_textarea_field($in['mail_body'] ?? ''),
@@ -639,6 +645,10 @@ function fhs_settings_page() {
       .fhs-colorfield input[type=color]{width:46px;height:34px;padding:2px;border:1px solid #8c8f94;border-radius:4px;background:#fff;cursor:pointer;flex:0 0 auto}
       .fhs-colorfield input[type=text]{width:104px;font-family:monospace;text-transform:lowercase}
       .fhs-colorfield input[type=text].fhs-bad{border-color:#d63638;box-shadow:0 0 0 1px #d63638}
+      .fhs-logofield{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .fhs-logo-preview{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid #dcdcde;border-radius:6px;background:#fff;overflow:hidden;flex:0 0 auto}
+      .fhs-logo-preview img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+      .fhs-logo-preview.is-empty{color:#8c8f94;font-size:11px;background:#f6f7f7}
       .fhs-recipes td{vertical-align:middle}
       .fhs-recipes .fhs-copy-src{display:block;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;padding:8px 10px;font-size:12.5px;line-height:1.6;word-break:break-all;user-select:all}
       .fhs-recipes .fhs-copy{white-space:nowrap}
@@ -796,6 +806,25 @@ function fhs_settings_page() {
             </div>
 
             <div class="fhs-tabpanel" data-tab="style" style="display:none">
+            <h3>見出しのアイコン</h3>
+            <table class="form-table">
+                <tr><th>アイコン画像</th><td>
+                    <?php $logo = fhs_opt('logo_url'); ?>
+                    <div class="fhs-logofield">
+                      <span class="fhs-logo-preview<?php echo $logo ? '' : ' is-empty'; ?>">
+                        <?php if ($logo): ?><img src="<?php echo esc_url($logo); ?>" alt=""><?php else: ?>未設定<?php endif; ?>
+                      </span>
+                      <input type="url" id="fhs-logo-url" name="<?php echo FHS_OPT; ?>[logo_url]" value="<?php echo esc_attr($logo); ?>" size="52" placeholder="https://example.com/logo.png">
+                      <button type="button" class="button" id="fhs-logo-pick">メディアから選ぶ</button>
+                      <button type="button" class="button" id="fhs-logo-clear">消す</button>
+                    </div>
+                    <p class="description">
+                        会社ロゴやファビコンなど。<strong>ティザーの見出しの左に小さく表示されます</strong>（高さは見出しに合わせて自動調整）。<br>
+                        正方形に近い画像がきれいに収まります。ショートコードで <code>logo="画像URL"</code> を指定すると、そのフォームだけ差し替えられます。
+                    </p>
+                </td></tr>
+            </table>
+
             <h3>フォームの色</h3>
             <p class="description">カラーコード（<code>#1f6feb</code> のような6桁）を直接入力できます。左の四角を押すとカラーピッカーからも選べます。</p>
             <table class="form-table">
@@ -856,7 +885,7 @@ function fhs_settings_page() {
                 <tr><td><code>subtitle</code></td><td>小見出し（省略時は表示なし）</td></tr>
                 <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
                 <tr><td><code>steps</code></td><td><code>steps="0"</code> で「STEP 1」「STEP 2」の表記を消す</td></tr>
-                <tr><td><code>logo</code></td><td>ロゴ画像URL（メディアにアップしてURLを貼る）。指定するとロゴ左・見出し右の横並びに</td></tr>
+                <tr><td><code>logo</code></td><td>見出しの左に出すアイコン画像のURL。<strong>ふだんは「デザイン」タブで設定すれば全部のティザーに出ます</strong>ので、ここで指定するのは<strong>そのフォームだけ画像を変えたいとき</strong>です</td></tr>
                 <tr><td><code>note</code></td><td>フォーム下の小さな注記（省略時：「入力内容は次のページに引き継がれます…」）</td></tr>
                 <tr><td><code>button</code></td><td>ボタンの文言（省略時：無料で査定を依頼する）</td></tr>
                 </tbody>
@@ -977,6 +1006,35 @@ function fhs_settings_page() {
                 hex.classList.remove('fhs-bad');
             });
         });
+
+        /* アイコン画像：メディアライブラリから選ぶ。
+           wp.media が使えない環境でも、URLを直接貼れば動くようにしてある。 */
+        (function(){
+            var input = document.getElementById('fhs-logo-url');
+            if (!input) return;
+            var wrap = input.closest('.fhs-logofield');
+            var preview = wrap.querySelector('.fhs-logo-preview');
+            var frame = null;
+            function render(){
+                var url = input.value.trim();
+                if (url) { preview.innerHTML = '<img alt="">'; preview.querySelector('img').src = url; preview.classList.remove('is-empty'); }
+                else { preview.textContent = '未設定'; preview.classList.add('is-empty'); }
+            }
+            input.addEventListener('input', render);
+            document.getElementById('fhs-logo-clear').addEventListener('click', function(){ input.value = ''; render(); });
+            document.getElementById('fhs-logo-pick').addEventListener('click', function(){
+                if (!window.wp || !window.wp.media) { input.focus(); return; }   // 使えなければ手入力に任せる
+                if (frame) { frame.open(); return; }
+                frame = wp.media({ title: 'アイコンにする画像を選ぶ', button: { text: 'この画像を使う' },
+                                   library: { type: 'image' }, multiple: false });
+                frame.on('select', function(){
+                    var a = frame.state().get('selection').first().toJSON();
+                    input.value = a.url;
+                    render();
+                });
+                frame.open();
+            });
+        })();
 
         /* ショートコードのコピーボタン。
            管理画面が https でないと navigator.clipboard が使えないため、
@@ -1355,7 +1413,8 @@ function fhs_shortcode($atts = array()) {
     $t_title  = $a['title']    !== '' ? sanitize_text_field($a['title'])    : '60秒でかんたん入力';
     $t_sub    = $a['subtitle'] !== '' ? sanitize_text_field($a['subtitle']) : '';
     $t_note   = $a['note']     !== '' ? sanitize_text_field($a['note'])     : '';
-    $t_logo   = $a['logo']     !== '' ? esc_url_raw($a['logo'])             : '';
+    // アイコンは設定のものを使い、ショートコードで指定があればそちらを優先する
+    $t_logo   = $a['logo']     !== '' ? esc_url_raw($a['logo'])             : fhs_opt('logo_url', '');
     $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge'])    : '無料・秘密厳守';
     $t_steps  = ($a['steps'] !== '0' && $a['steps'] !== '');
     $t_fields = $teaser ? fhs_parse_teaser_fields($a['fields']) : array();
@@ -1572,10 +1631,9 @@ function fhs_shortcode($atts = array()) {
     .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
     .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}
     .fhs-tsub{font-size:14px;color:var(--fhs-muted);margin-top:5px;line-height:1.6}
-    .fhs-thead.fhs-has-logo{display:flex;align-items:center;gap:14px;text-align:left}
-    .fhs-thead.fhs-has-logo .fhs-tlogo{flex:0 0 auto;line-height:0}
-    .fhs-thead.fhs-has-logo .fhs-tlogo img{display:block;max-height:56px;max-width:90px;width:auto;height:auto}
-    .fhs-thead.fhs-has-logo .fhs-ttexts{flex:1;min-width:0}
+    /* 見出しの左に置くアイコン（会社ロゴ・ファビコンなど）。高さは見出しの文字に合わせる */
+    /* 正方形なら高さ基準で収まり、横長ロゴでも読める程度の幅を許す（object-fitで縦横比は保つ） */
+    .fhs-wrap .fhs-ticon{height:1.45em;width:auto;max-width:4.5em;vertical-align:-.22em;margin-right:.4em;display:inline-block;object-fit:contain}
     /* STEPバッジ */
     .fhs-step{display:inline-block;background:#3a4a5e;color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:4px;padding:4px 8px;margin-right:9px;vertical-align:middle;line-height:1}
     .fhs-wrap .fhs-tfield > label{display:block;font-weight:700;font-size:16px;color:#374151;margin:16px 0 8px}
@@ -1608,8 +1666,7 @@ function fhs_shortcode($atts = array()) {
       .fhs-wrap .fhs-tile{min-height:0;padding:13px 8px}
       .fhs-ttitle{font-size:19px}
       .fhs-design-teaser .fhs-card,.fhs-design-teaser-v .fhs-card{padding:18px 16px 20px}
-      .fhs-thead.fhs-has-logo{display:block;text-align:center}
-      .fhs-thead.fhs-has-logo .fhs-tlogo{display:none}
+      .fhs-wrap .fhs-ticon{max-width:3.4em}
     }
 
     /* 引き継ぎ後の「続きはこちらから」バナー */
@@ -1631,15 +1688,12 @@ function fhs_shortcode($atts = array()) {
 <?php endif; ?>
     <div class="fhs-errors"></div>
     <form class="fhs-form">
-      <div class="fhs-thead<?php echo $t_logo ? ' fhs-has-logo' : ''; ?>">
-<?php if ($t_logo): ?>
-        <div class="fhs-tlogo"><img src="<?php echo esc_url($t_logo); ?>" alt=""></div>
-<?php endif; ?>
+      <div class="fhs-thead">
         <div class="fhs-ttexts">
 <?php if ($t_badge !== ''): ?>
           <div class="fhs-tbadge-row"><span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span></div>
 <?php endif; ?>
-          <div class="fhs-ttitle"><?php echo esc_html($t_title); ?></div>
+          <div class="fhs-ttitle"><?php if ($t_logo): ?><img class="fhs-ticon" src="<?php echo esc_url($t_logo); ?>" alt="<?php echo esc_attr(fhs_opt('operator_name', '')); ?>"><?php endif; ?><?php echo esc_html($t_title); ?></div>
 <?php if ($t_sub !== ''): ?>
           <div class="fhs-tsub"><?php echo esc_html($t_sub); ?></div>
 <?php endif; ?>
