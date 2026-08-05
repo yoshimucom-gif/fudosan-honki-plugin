@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.1
+ * Version: 1.7.2
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.1');
+define('FHS_VER', '1.7.2');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -465,6 +465,8 @@ function fhs_sanitize_options($in) {
         'lead_text'        => sanitize_textarea_field($in['lead_text'] ?? ''),
         // 装飾（色）
         'color_brand'      => sanitize_hex_color($in['color_brand'] ?? '')    ?: '#1f6feb',
+        // 空欄ならブランドカラーを使う（ボタンだけ目立つ色にしたい場合に指定）
+        'color_btn_bg'     => sanitize_hex_color($in['color_btn_bg'] ?? '')   ?: '',
         'color_btn_text'   => sanitize_hex_color($in['color_btn_text'] ?? '') ?: '#ffffff',
         'color_title'      => sanitize_hex_color($in['color_title'] ?? '')    ?: '#1f6feb',
         'color_badge'      => sanitize_hex_color($in['color_badge'] ?? '')    ?: '#ff5a36',
@@ -992,7 +994,14 @@ function fhs_settings_page() {
             <table class="form-table">
                 <tr><th>ブランドカラー</th><td>
                     <?php echo fhs_color_field('color_brand', '#1f6feb'); ?>
-                    <p class="description">ボタンの背景、入力済みチェック（✓）、次の入力欄のハイライト、物件種別で選んだタイルに使われます。</p>
+                    <p class="description">入力済みチェック（✓）、次の入力欄のハイライト、物件種別で選んだタイル、メリットのタグに使われます。</p>
+                </td></tr>
+                <tr><th>ボタンの背景色</th><td>
+                    <?php echo fhs_color_field('color_btn_bg', fhs_opt('color_brand', '#1f6feb')); ?>
+                    <p class="description">
+                        送信ボタン・「次へ進む」ボタンの背景色。<strong>空欄ならブランドカラーと同じ</strong>になります。<br>
+                        ボタンだけ目立つ色（オレンジなど）にすると押されやすくなります。
+                    </p>
                 </td></tr>
                 <tr><th>ボタンの文字色</th><td><?php echo fhs_color_field('color_btn_text', '#ffffff'); ?></td></tr>
                 <tr><th>見出しの色</th><td>
@@ -1609,6 +1618,7 @@ function fhs_shortcode($atts = array()) {
 
     $c_brand    = fhs_opt('color_brand', '#1f6feb');
     $c_btn_text = fhs_opt('color_btn_text', '#ffffff');
+    $c_btn_bg   = fhs_opt('color_btn_bg', '') ?: $c_brand;   // 未指定ならブランドカラー
     $c_title    = fhs_opt('color_title', '#1f6feb');
     $c_badge    = fhs_opt('color_badge', '#ff5a36');
     $c_brand_rgb = fhs_hex_to_rgb($c_brand);
@@ -1744,7 +1754,7 @@ function fhs_shortcode($atts = array()) {
   echo $t_width ? ' style="max-width:' . esc_attr($t_width) . '"' : ''; ?>>
 <?php if ($need_assets): ?>
   <style>
-    .fhs-wrap{--fhs-brand:<?php echo esc_attr($c_brand); ?>;--fhs-brand-rgb:<?php echo esc_attr($c_brand_rgb); ?>;--fhs-btn-text:<?php echo esc_attr($c_btn_text); ?>;--fhs-title:<?php echo esc_attr($c_title); ?>;--fhs-badge-bg:<?php echo esc_attr($c_badge); ?>;--fhs-ink:#1a1f36;--fhs-muted:#6b7280;--fhs-line:#e5e7eb;width:100%;max-width:none;margin:0;color:var(--fhs-ink);font-family:inherit;line-height:1.75;font-size:17px}
+    .fhs-wrap{--fhs-brand:<?php echo esc_attr($c_brand); ?>;--fhs-brand-rgb:<?php echo esc_attr($c_brand_rgb); ?>;--fhs-btn-text:<?php echo esc_attr($c_btn_text); ?>;--fhs-btn-bg:<?php echo esc_attr($c_btn_bg); ?>;--fhs-title:<?php echo esc_attr($c_title); ?>;--fhs-badge-bg:<?php echo esc_attr($c_badge); ?>;--fhs-ink:#1a1f36;--fhs-muted:#6b7280;--fhs-line:#e5e7eb;width:100%;max-width:none;margin:0;color:var(--fhs-ink);font-family:inherit;line-height:1.75;font-size:17px}
     /* テーマ側が box-sizing を当てているかどうかで、余白ぶん高さ・幅がずれる。
        このフォームの中だけは border-box に固定して、どのテーマでも同じ見た目にする。 */
     .fhs-wrap,.fhs-wrap *{box-sizing:border-box}
@@ -1770,7 +1780,7 @@ function fhs_shortcode($atts = array()) {
     .fhs-hint{color:var(--fhs-muted);font-size:14px;margin-top:5px;line-height:1.7}
     .fhs-check{display:flex;gap:9px;align-items:flex-start;margin-top:14px}
     .fhs-check input{width:auto;margin-top:6px;transform:scale(1.2)}.fhs-check label{margin:0;font-weight:400;font-size:16px}
-    .fhs-wrap button{margin-top:24px;width:100%;background:var(--fhs-brand);color:var(--fhs-btn-text);border:0;border-radius:10px;padding:18px;font-size:20px;font-weight:700;cursor:pointer}
+    .fhs-wrap button{margin-top:24px;width:100%;background:var(--fhs-btn-bg);color:var(--fhs-btn-text);border:0;border-radius:10px;padding:18px;font-size:20px;font-weight:700;cursor:pointer}
     /* ステップ表示。★.fhs-step はティザーの「STEP 1」バッジが使っているので別名にすること */
     .fhs-wrap .fhs-formstep{display:block}
     .fhs-steps{margin-bottom:22px}

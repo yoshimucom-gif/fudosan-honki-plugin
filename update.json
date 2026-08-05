@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.7.1\n・ティザーの「STEP 1」バッジが横いっぱいに伸びてしまう不具合を修正しました（項目名と横並びに戻ります）\n・住所欄の入力例を「例：〇〇市△△町1-2-3」に統一しました。エリアを絞ったサイトでは、設定→基本設定→「住所欄の入力例」で具体的な市区町村名に変えられます"
+    "changelog": "1.7.2\n・ボタンの背景色を単独で選べるようにしました（設定→デザイン→「ボタンの背景色」）。空欄ならこれまでどおりブランドカラーと同じ色になります。ボタンだけオレンジにするなど、押されやすい配色にできます"
   }
 }
