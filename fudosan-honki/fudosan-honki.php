@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.1.1');
+define('FHS_VER', '1.2.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -134,6 +134,33 @@ function fhs_parse_teaser_fields($raw) {
         if ($k !== '' && isset($known[$k]) && !in_array($k, $out, true)) $out[] = $k;
     }
     return $out ? $out : array('ptype', 'address');
+}
+
+/**
+ * 属性の間の半角スペースが抜けていても読み取れるようにする。
+ *
+ * [fudosan_honki design="teaser" url="/satei/"width="640"]
+ *                                          ↑ ここにスペースが無い
+ * WordPressは属性を空白区切りで読むため、この塊を属性として認識できず、
+ * 「値のない項目」として番号付きで渡してくる。結果 url が空になり、
+ * 「urlを指定してください」と出るのに書いてある、という分かりにくい状態になる。
+ * よくある書き間違いなので、ここで分解して拾い、管理者にだけ直し方を知らせる。
+ */
+function fhs_unglue_atts($atts) {
+    if (!is_array($atts)) return $atts;
+    $out = array(); $fixed = false;
+    foreach ($atts as $k => $v) {
+        if (is_int($k) && is_string($v)
+            && preg_match_all('/([\w-]+)\s*=\s*"([^"]*)"/', $v, $m, PREG_SET_ORDER)
+            && count($m) >= 2) {
+            foreach ($m as $one) $out[strtolower($one[1])] = $one[2];
+            $fixed = true;
+            continue;
+        }
+        $out[$k] = $v;
+    }
+    if ($fixed) $out['fhs_glued'] = '1';
+    return $out;
 }
 
 /** ティザーの項目キー → 本フォームでの入力欄名（引き継ぎで同じ欄に流し込むため） */
@@ -587,8 +614,32 @@ function fhs_test_mail() {
 /* =========================================================================
  * 8. 管理画面：設定
  * ======================================================================= */
+/**
+ * 色の入力欄。カラーピッカーだけだと「いま何番の色なのか」が分からず、
+ * ブランドカラーの指定（#1f6feb など）を貼り付けることもできないため、
+ * ★HEXのテキスト入力を主にして、ピッカーは横に並べる。両者は双方向に同期する。
+ */
+function fhs_color_field($key, $default) {
+    $v = fhs_opt($key, $default);
+    ob_start(); ?>
+    <span class="fhs-colorfield">
+      <input type="color" class="fhs-color-pick" value="<?php echo esc_attr($v); ?>" aria-label="カラーピッカーで選ぶ">
+      <input type="text" class="fhs-color-hex code" name="<?php echo FHS_OPT; ?>[<?php echo esc_attr($key); ?>]"
+             value="<?php echo esc_attr($v); ?>" maxlength="7" size="9" spellcheck="false" autocomplete="off"
+             placeholder="<?php echo esc_attr($default); ?>">
+      <button type="button" class="button button-small fhs-color-reset" data-default="<?php echo esc_attr($default); ?>">初期値</button>
+    </span>
+<?php return ob_get_clean();
+}
+
 function fhs_settings_page() {
     ?>
+    <style>
+      .fhs-colorfield{display:inline-flex;align-items:center;gap:8px}
+      .fhs-colorfield input[type=color]{width:46px;height:34px;padding:2px;border:1px solid #8c8f94;border-radius:4px;background:#fff;cursor:pointer;flex:0 0 auto}
+      .fhs-colorfield input[type=text]{width:104px;font-family:monospace;text-transform:lowercase}
+      .fhs-colorfield input[type=text].fhs-bad{border-color:#d63638;box-shadow:0 0 0 1px #d63638}
+    </style>
     <div class="wrap">
         <h1>訪問査定申込（本気査定） 設定</h1>
         <?php if (isset($_GET['testmail'])) {
@@ -743,21 +794,24 @@ function fhs_settings_page() {
 
             <div class="fhs-tabpanel" data-tab="style" style="display:none">
             <h3>フォームの色</h3>
+            <p class="description">カラーコード（<code>#1f6feb</code> のような6桁）を直接入力できます。左の四角を押すとカラーピッカーからも選べます。</p>
             <table class="form-table">
                 <tr><th>ブランドカラー</th><td>
-                    <input type="color" name="<?php echo FHS_OPT; ?>[color_brand]" value="<?php echo esc_attr(fhs_opt('color_brand', '#1f6feb')); ?>">
-                    <p class="description">ボタンの背景、入力済みチェック（✓）、次の入力欄のハイライトに使われます。</p>
+                    <?php echo fhs_color_field('color_brand', '#1f6feb'); ?>
+                    <p class="description">ボタンの背景、入力済みチェック（✓）、次の入力欄のハイライト、物件種別で選んだタイルに使われます。</p>
                 </td></tr>
-                <tr><th>ボタンの文字色</th><td>
-                    <input type="color" name="<?php echo FHS_OPT; ?>[color_btn_text]" value="<?php echo esc_attr(fhs_opt('color_btn_text', '#ffffff')); ?>"></td></tr>
+                <tr><th>ボタンの文字色</th><td><?php echo fhs_color_field('color_btn_text', '#ffffff'); ?></td></tr>
                 <tr><th>見出しの色</th><td>
-                    <input type="color" name="<?php echo FHS_OPT; ?>[color_title]" value="<?php echo esc_attr(fhs_opt('color_title', '#1f6feb')); ?>"></td></tr>
+                    <?php echo fhs_color_field('color_title', '#1f6feb'); ?>
+                    <p class="description">ティザーの見出し（例：60秒でかんたん入力）の文字色。</p>
+                </td></tr>
                 <tr><th>「必須」バッジの色</th><td>
-                    <input type="color" name="<?php echo FHS_OPT; ?>[color_badge]" value="<?php echo esc_attr(fhs_opt('color_badge', '#ff5a36')); ?>">
-                    <p class="description">未入力の項目に付くバッジ。入力すると「ブランドカラーの ✓」に変わります。</p>
+                    <?php echo fhs_color_field('color_badge', '#ff5a36'); ?>
+                    <p class="description">未入力の項目に付くバッジと、ティザーの「無料・秘密厳守」バッジ。入力すると「ブランドカラーの ✓」に変わります。</p>
                 </td></tr>
             </table>
-            <p class="description">初期値：ブランド <code>#1f6feb</code> ／ ボタン文字 <code>#ffffff</code> ／ 見出し <code>#1f6feb</code> ／ バッジ <code>#ff5a36</code></p>
+            <p class="description">初期値：ブランド <code>#1f6feb</code> ／ ボタン文字 <code>#ffffff</code> ／ 見出し <code>#1f6feb</code> ／ バッジ <code>#ff5a36</code><br>
+                空欄のまま保存すると初期値に戻ります。</p>
             </div>
 
             <div class="fhs-tabpanel" data-tab="usage" style="display:none">
@@ -840,6 +894,37 @@ function fhs_settings_page() {
     </div>
     <script>
     (function(){
+        /* 色欄：HEXテキストとカラーピッカーを双方向に同期する */
+        function expand(v){   // #abc → #aabbcc（input[type=color] は6桁しか受け付けない）
+            return v.length === 4 ? '#' + v[1]+v[1] + v[2]+v[2] + v[3]+v[3] : v;
+        }
+        function norm(v){
+            v = String(v == null ? '' : v).trim().toLowerCase();
+            if (v !== '' && v.charAt(0) !== '#') v = '#' + v;
+            return /^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(v) ? v : null;
+        }
+        document.querySelectorAll('.fhs-colorfield').forEach(function(f){
+            var pick = f.querySelector('.fhs-color-pick'),
+                hex = f.querySelector('.fhs-color-hex'),
+                reset = f.querySelector('.fhs-color-reset');
+            pick.addEventListener('input', function(){ hex.value = pick.value; hex.classList.remove('fhs-bad'); });
+            hex.addEventListener('input', function(){
+                var v = norm(hex.value);
+                if (v) { pick.value = expand(v); hex.classList.remove('fhs-bad'); }
+                else hex.classList.toggle('fhs-bad', hex.value.trim() !== '');   // 空欄は初期値に戻る指定として許す
+            });
+            hex.addEventListener('blur', function(){
+                var v = norm(hex.value);
+                if (v) hex.value = v;                       // #ABC → #abc に整える
+                else if (hex.value.trim() !== '') { hex.value = pick.value; hex.classList.remove('fhs-bad'); }
+            });
+            reset.addEventListener('click', function(){
+                hex.value = reset.getAttribute('data-default');
+                pick.value = reset.getAttribute('data-default');
+                hex.classList.remove('fhs-bad');
+            });
+        });
+
         var tabs = document.querySelectorAll('#fhs-tabs .nav-tab');
         var panels = document.querySelectorAll('.fhs-tabpanel');
         var save = document.getElementById('fhs-save');
@@ -1170,6 +1255,9 @@ add_shortcode('fudosan_honki', 'fhs_shortcode');
  * （URLのクエリには載せない＝物件住所が履歴やリファラに残らないようにするため）。
  */
 function fhs_shortcode($atts = array()) {
+    $atts  = fhs_unglue_atts($atts);
+    $glued = !empty($atts['fhs_glued']);   // 属性の間のスペースが抜けていた（拾って動かしている）
+    unset($atts['fhs_glued']);
     $a = shortcode_atts(array(
         'design' => 'default', 'button' => '',
         // ティザー用
@@ -1431,7 +1519,10 @@ function fhs_shortcode($atts = array()) {
     .fhs-tbadge{position:relative;top:12px;z-index:1;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1;box-shadow:0 1px 4px rgba(16,24,40,.08)}
     .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.7;text-align:center}
     .fhs-tdisc{color:var(--fhs-muted);font-size:12px;margin-top:10px;line-height:1.7;text-align:center}
-    .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px}
+    .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px;line-height:1.8}
+    /* 自動で拾えている場合は「エラー」ではないので、色を落とす */
+    .fhs-admin-warn.fhs-admin-note{background:#fff8e6;border-color:#f0e0a8;color:#6b5a12}
+    .fhs-admin-warn code{background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;font-size:13px}
     @media(max-width:560px){
       .fhs-tiles{grid-template-columns:1fr;gap:8px}
       .fhs-wrap .fhs-tile{min-height:0;padding:13px 8px}
@@ -1448,6 +1539,11 @@ function fhs_shortcode($atts = array()) {
   </style>
 
   <div class="fhs-card fhs-form-card">
+<?php if ($glued && current_user_can('manage_options')): ?>
+    <div class="fhs-admin-warn fhs-admin-note"><strong>【この行は管理者にだけ見えています】ショートコードの属性の間に半角スペースが足りません。</strong><br>
+      いまは自動で読み取って表示していますが、<code>"</code> と次の属性の間に<strong>半角スペース</strong>を入れてください。<br>
+      × <code>url="/satei/"width="640"</code>　→　○ <code>url="/satei/" width="640"</code></div>
+<?php endif; ?>
 <?php if ($teaser): /* ===== 入口フォーム（ティザー）===== */ ?>
 <?php if (!$t_target && current_user_can('manage_options')): ?>
     <div class="fhs-admin-warn"><strong>【この行は管理者にだけ見えています】</strong><br>

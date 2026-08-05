@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.1.1\n・ティザーの横幅を調整できるようにしました（width属性。省略時は横長500px・縦440pxで中央寄せ）\n・物件種別のタイルの高さが、テーマによって不必要に大きくなることがある問題を修正しました"
+    "changelog": "1.2.0\n・色の設定でカラーコード（#1f6feb など）を直接入力・確認できるようにしました。カラーピッカーと連動し、「初期値」ボタンで戻せます\n・ショートコードの属性の間に半角スペースを入れ忘れても正しく動くようにしました（管理者にだけ直し方を案内します）"
   }
 }
