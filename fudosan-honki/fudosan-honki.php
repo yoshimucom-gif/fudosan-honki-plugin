@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.0
+ * Version: 1.7.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.0');
+define('FHS_VER', '1.7.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -128,23 +128,13 @@ function fhs_teaser_fields() {
 /**
  * 住所欄の入力例（プレースホルダ）。
  *
- * 「例：東京都渋谷区…」が固定で出ていると、岡山のサイトでは的外れに見える。
- * 設定に例文があればそれを使い、無ければ運営者の所在地から市区町村を拾って作る。
- * ★都道府県は付けない。市区町村単位で扱うサービスなので、県から書かせる必要がない。
+ * ★都道府県は入れない。市区町村単位で扱うサービスなので、県から書かせる必要がない。
+ * ※会社の所在地から自動で作ることも試したが、扱うエリアと所在地は必ずしも一致しないため、
+ *   汎用の例を既定にして、変えたい場合だけ設定で上書きしてもらう形にした。
  */
 function fhs_address_placeholder() {
     $custom = trim((string) fhs_opt('address_example', ''));
-    if ($custom !== '') return $custom;
-
-    $addr = trim((string) fhs_opt('operator_address', ''));
-    if ($addr !== '') {
-        // 先頭の都道府県を落としてから、市区町村（＋政令市の区）を拾う
-        $rest = preg_replace('/^\s*(東京都|北海道|京都府|大阪府|.{2,3}県)/u', '', $addr);
-        if (preg_match('/^\s*(.{1,8}?[市区町村](?:.{1,6}?区)?)/u', (string)$rest, $m)) {
-            return '例：' . $m[1] . '〇〇1-2-3';
-        }
-    }
-    return '例：〇〇市△△町1-2-3';
+    return $custom !== '' ? $custom : '例：〇〇市△△町1-2-3';
 }
 
 /** 「無料, 地場優良企業対応, 1社査定」のような文字列をタグの配列に。
@@ -798,8 +788,8 @@ function fhs_settings_page() {
                 <tr><th>住所欄の入力例</th><td>
                     <input type="text" name="<?php echo FHS_OPT; ?>[address_example]" value="<?php echo esc_attr(fhs_opt('address_example')); ?>" size="50" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>">
                     <p class="description">
-                        物件住所の欄に薄く表示される入力例です。空欄なら<strong>上の「所在地」から市区町村を読み取って自動で作ります</strong>
-                        （いまは「<?php echo esc_html(fhs_address_placeholder()); ?>」と表示されます）。<br>
+                        物件住所の欄に薄く表示される入力例です。空欄なら「<?php echo esc_html(fhs_address_placeholder()); ?>」と表示されます。<br>
+                        エリアを絞ったサイトなら <code>例：岡山市北区〇〇1-2-3</code> のように具体的に書くと、お客様が書き方に迷いません。<br>
                         <strong>都道府県は入れていません。</strong>市区町村単位で扱うサービスのため、県から書かせる必要がないためです。
                     </p>
                 </td></tr>
@@ -1781,8 +1771,8 @@ function fhs_shortcode($atts = array()) {
     .fhs-check{display:flex;gap:9px;align-items:flex-start;margin-top:14px}
     .fhs-check input{width:auto;margin-top:6px;transform:scale(1.2)}.fhs-check label{margin:0;font-weight:400;font-size:16px}
     .fhs-wrap button{margin-top:24px;width:100%;background:var(--fhs-brand);color:var(--fhs-btn-text);border:0;border-radius:10px;padding:18px;font-size:20px;font-weight:700;cursor:pointer}
-    /* ステップ表示。テーマによっては div の既定が変わるので明示しておく */
-    .fhs-wrap .fhs-step{display:block}
+    /* ステップ表示。★.fhs-step はティザーの「STEP 1」バッジが使っているので別名にすること */
+    .fhs-wrap .fhs-formstep{display:block}
     .fhs-steps{margin-bottom:22px}
     .fhs-stepbar{display:flex;gap:6px}
     .fhs-stepdot{flex:1;height:6px;border-radius:3px;background:#e5e7eb;transition:background .25s}
@@ -1983,7 +1973,7 @@ function fhs_shortcode($atts = array()) {
       </div>
 <?php endif; ?>
 
-<?php if ($stepped): ?><div class="fhs-step" data-step="1"><?php endif; ?>
+<?php if ($stepped): ?><div class="fhs-formstep" data-step="1"><?php endif; ?>
       <div class="fhs-section">物件の情報</div>
       <label for="<?php echo esc_attr($uid . '-ptype'); ?>">物件種別<span class="fhs-req">必須</span></label>
       <select name="ptype" id="<?php echo esc_attr($uid . '-ptype'); ?>" required><?php echo $ptype_options; ?></select>
@@ -2003,7 +1993,7 @@ function fhs_shortcode($atts = array()) {
 <?php if ($stepped): ?></div><?php endif; /* step 1 ここまで */ ?>
 
 <?php if ($step2): ?>
-<?php if ($stepped): ?><div class="fhs-step" data-step="2" style="display:none"><?php endif; ?>
+<?php if ($stepped): ?><div class="fhs-formstep" data-step="2" style="display:none"><?php endif; ?>
 <?php if ($situ_fields): ?>
       <div class="fhs-section">売却のご状況</div>
       <div class="fhs-group">
@@ -2018,7 +2008,7 @@ function fhs_shortcode($atts = array()) {
 <?php if ($stepped): ?></div><?php endif; /* step 2 ここまで */ ?>
 <?php endif; ?>
 
-<?php if ($stepped): ?><div class="fhs-step" data-step="<?php echo $step2 ? 3 : 2; ?>" style="display:none"><?php endif; ?>
+<?php if ($stepped): ?><div class="fhs-formstep" data-step="<?php echo $step2 ? 3 : 2; ?>" style="display:none"><?php endif; ?>
       <div class="fhs-section">ご連絡先</div>
 <?php if ($cust_fields): ?>
       <div class="fhs-group">
@@ -2206,7 +2196,7 @@ function fhs_shortcode($atts = array()) {
   /* ===== ステップ表示 =====
      一画面に全部出すより離脱が減る。個人情報は必ず最後のステップに置く。
      ページ遷移はしない（読み込み待ちで離脱するため、表示の切り替えだけで済ませる）。 */
-  var steps = wrap.querySelectorAll('.fhs-step');
+  var steps = wrap.querySelectorAll('.fhs-formstep');
   var STEPPED = steps.length > 1;
   var stepNow = 0;
   var stepDots = wrap.querySelectorAll('.fhs-stepdot');
