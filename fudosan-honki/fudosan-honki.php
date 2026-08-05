@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.3.0');
+define('FHS_VER', '1.3.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -886,7 +886,8 @@ function fhs_settings_page() {
                 <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
                 <tr><td><code>steps</code></td><td><code>steps="0"</code> で「STEP 1」「STEP 2」の表記を消す</td></tr>
                 <tr><td><code>logo</code></td><td>見出しの左に出すアイコン画像のURL。<strong>ふだんは「デザイン」タブで設定すれば全部のティザーに出ます</strong>ので、ここで指定するのは<strong>そのフォームだけ画像を変えたいとき</strong>です</td></tr>
-                <tr><td><code>note</code></td><td>フォーム下の小さな注記（省略時：「入力内容は次のページに引き継がれます…」）</td></tr>
+                <tr><td><code>note</code></td><td>フォーム下の小さな注記。<strong><code>|</code>（縦棒）で改行</strong>できます<br>
+                    <span class="description">例：<code>note="しつこい営業はいたしません|査定は無料です"</code>　省略時は「入力内容は次のページに引き継がれます。／この時点ではまだ送信されません。」の2行</span></td></tr>
                 <tr><td><code>button</code></td><td>ボタンの文言（省略時：無料で査定を依頼する）</td></tr>
                 </tbody>
             </table>
@@ -1413,6 +1414,11 @@ function fhs_shortcode($atts = array()) {
     $t_title  = $a['title']    !== '' ? sanitize_text_field($a['title'])    : '60秒でかんたん入力';
     $t_sub    = $a['subtitle'] !== '' ? sanitize_text_field($a['subtitle']) : '';
     $t_note   = $a['note']     !== '' ? sanitize_text_field($a['note'])     : '';
+    /* 注記は行ごとに分けて出す（幅によって変な位置で折り返さないように）。
+       note属性では「|」で行を区切れる。 */
+    $t_note_lines = $t_note !== ''
+        ? array_values(array_filter(array_map('trim', explode('|', $t_note)), 'strlen'))
+        : array('入力内容は次のページに引き継がれます。', 'この時点ではまだ送信されません。');
     // アイコンは設定のものを使い、ショートコードで指定があればそちらを優先する
     $t_logo   = $a['logo']     !== '' ? esc_url_raw($a['logo'])             : fhs_opt('logo_url', '');
     $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge'])    : '無料・秘密厳守';
@@ -1656,7 +1662,8 @@ function fhs_shortcode($atts = array()) {
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
     .fhs-tbadge{display:inline-block;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
-    .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.7;text-align:center}
+    .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.8;text-align:center;text-wrap:pretty}
+    .fhs-tnote span{display:block}
     .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px;line-height:1.8}
     /* 自動で拾えている場合は「エラー」ではないので、色を落とす */
     .fhs-admin-warn.fhs-admin-note{background:#fff8e6;border-color:#f0e0a8;color:#6b5a12}
@@ -1706,8 +1713,14 @@ function fhs_shortcode($atts = array()) {
           <button class="fhs-submit" type="submit"><?php echo esc_html($btn); ?></button>
         </div>
       </div>
-      <div class="fhs-tnote"><?php echo esc_html($t_note !== '' ? $t_note
-          : '入力内容は次のページに引き継がれます。この時点ではまだ送信されません。'); ?></div>
+      <?php /* 注記は文ごとに行を分ける。1つの段落にすると幅によって
+               「…送信されませ／ん。」のように中途半端な位置で折り返してしまう。
+               note属性では | で行を区切れる。 */ ?>
+      <div class="fhs-tnote">
+<?php foreach ($t_note_lines as $ln): ?>
+        <span><?php echo esc_html($ln); ?></span>
+<?php endforeach; ?>
+      </div>
       <?php /* ティザーには免責を置かない。ここでは価格を一切示さず、申し込みも受け付けない
                （次のページへ移るだけ）ため。免責が要るのは価格を示す場面と申し込みを受け付ける場面で、
                それは遷移先の本フォーム・完了画面・自動返信メールに必ず表示される。 */ ?>

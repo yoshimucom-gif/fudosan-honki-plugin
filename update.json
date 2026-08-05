@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.3.0\n・ティザーの見出しの左に、会社ロゴやファビコンなどの画像を表示できるようにしました。設定→デザイン→「見出しのアイコン」でメディアライブラリから選べます（ショートコードの logo 属性で個別に差し替えることもできます）"
+    "changelog": "1.3.1\n・ティザー下部の注記が「…送信されませ／ん。」のように途中で折り返していたのを、文ごとにきれいに2行で表示するようにしました（note属性では | で改行位置を指定できます）"
   }
 }
