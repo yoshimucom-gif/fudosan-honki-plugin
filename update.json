@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.2.0\n・色の設定でカラーコード（#1f6feb など）を直接入力・確認できるようにしました。カラーピッカーと連動し、「初期値」ボタンで戻せます\n・ショートコードの属性の間に半角スペースを入れ忘れても正しく動くようにしました（管理者にだけ直し方を案内します）"
+    "changelog": "1.2.1\n・設定の「使い方」タブに、そのままコピーして貼れるショートコードの例を7種類（コピーボタン付き）追加しました。幅の指定や地域名入りの見出しなど、書き方に迷わず選べます"
   }
 }

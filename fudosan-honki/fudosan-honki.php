@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.2.0');
+define('FHS_VER', '1.2.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -639,6 +639,9 @@ function fhs_settings_page() {
       .fhs-colorfield input[type=color]{width:46px;height:34px;padding:2px;border:1px solid #8c8f94;border-radius:4px;background:#fff;cursor:pointer;flex:0 0 auto}
       .fhs-colorfield input[type=text]{width:104px;font-family:monospace;text-transform:lowercase}
       .fhs-colorfield input[type=text].fhs-bad{border-color:#d63638;box-shadow:0 0 0 1px #d63638}
+      .fhs-recipes td{vertical-align:middle}
+      .fhs-recipes .fhs-copy-src{display:block;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;padding:8px 10px;font-size:12.5px;line-height:1.6;word-break:break-all;user-select:all}
+      .fhs-recipes .fhs-copy{white-space:nowrap}
     </style>
     <div class="wrap">
         <h1>訪問査定申込（本気査定） 設定</h1>
@@ -858,8 +861,58 @@ function fhs_settings_page() {
                 <tr><td><code>button</code></td><td>ボタンの文言（省略時：無料で査定を依頼する）</td></tr>
                 </tbody>
             </table>
-            <p class="description">記入例：<br>
-                <code>[fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></p>
+            <h3>そのままコピーして使えます</h3>
+            <p class="description">
+                <strong><code>/satei/</code> の部分だけ、ご自身の査定ページのURLに置き換えてください。</strong>
+                （<code>[fudosan_honki]</code> を貼った固定ページのURLです）
+            </p>
+            <table class="widefat striped fhs-recipes" style="max-width:980px">
+                <thead><tr><th style="width:190px">やりたいこと</th><th>ショートコード</th><th style="width:90px"></th></tr></thead>
+                <tbody>
+                <tr>
+                    <td><strong>記事の途中に置く</strong><br><span class="description">いちばん基本。幅500px</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>もう少し大きく見せる</strong><br><span class="description">幅640px</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="640"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>本文の幅いっぱいに</strong></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="100%"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>サイドバーに置く</strong><br><span class="description">縦・幅440px</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser-v" url="/satei/"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>見出しを地域に合わせる</strong><br><span class="description">エリア記事向け</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="640" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>売却時期も聞く</strong><br><span class="description">項目を1つ増やす</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                <tr>
+                    <td><strong>査定ページ本体</strong><br><span class="description">遷移先のページに貼る</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki]</code></td>
+                    <td><button type="button" class="button fhs-copy">コピー</button></td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="description" style="background:#fff8e6;border-left:4px solid #dba617;padding:10px 12px;max-width:980px;margin-top:12px">
+                <strong>書き方の注意：属性と属性の間には必ず半角スペースを入れてください。</strong><br>
+                × <code>url="/satei/"width="640"</code>　→　○ <code>url="/satei/" width="640"</code><br>
+                <span class="description">※ スペースが抜けていても動くようにしてありますが、その場合はフォームの上に
+                （管理者にだけ見える）お知らせが出ます。</span>
+            </p>
+            <p class="description">幅の目安：<code>500</code>（既定）＝本文になじむ ／ <code>640</code>＝存在感を出す ／ <code>100%</code>＝本文の幅いっぱい</p>
             <p class="description">属性 <code>button</code> はどのデザインでも使えます。例：<code>[fudosan_honki button="無料で査定を依頼する"]</code></p>
 
             <h3>申し込み後の動き</h3>
@@ -922,6 +975,33 @@ function fhs_settings_page() {
                 hex.value = reset.getAttribute('data-default');
                 pick.value = reset.getAttribute('data-default');
                 hex.classList.remove('fhs-bad');
+            });
+        });
+
+        /* ショートコードのコピーボタン。
+           管理画面が https でないと navigator.clipboard が使えないため、
+           その場合は選択＋execCommand に落とす（社内の http 環境でも動くように）。 */
+        document.querySelectorAll('.fhs-copy').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var src = btn.closest('tr').querySelector('.fhs-copy-src');
+                var text = src.textContent.trim();
+                function done(ok){
+                    var label = btn.textContent;
+                    btn.textContent = ok ? 'コピーしました' : '選択しました';
+                    setTimeout(function(){ btn.textContent = label; }, 1600);
+                }
+                function fallback(){
+                    var r = document.createRange();
+                    r.selectNodeContents(src);
+                    var sel = window.getSelection();
+                    sel.removeAllRanges(); sel.addRange(r);
+                    var ok = false;
+                    try { ok = document.execCommand('copy'); } catch (e) {}
+                    done(ok);
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function(){ done(true); }, fallback);
+                } else fallback();
             });
         });
 

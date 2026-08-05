@@ -55,7 +55,36 @@
      note     フォーム下の注記
      button   ボタンの文言
 
-   例: [fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]
+   ■ そのままコピーして使える例
+   （/satei/ の部分だけ、ご自身の査定ページのURLに置き換えてください）
+
+   記事の途中に置く（幅500px・基本）
+     [fudosan_honki design="teaser" url="/satei/"]
+
+   もう少し大きく見せる（幅640px）
+     [fudosan_honki design="teaser" url="/satei/" width="640"]
+
+   本文の幅いっぱいに
+     [fudosan_honki design="teaser" url="/satei/" width="100%"]
+
+   サイドバーに置く（縦・幅440px）
+     [fudosan_honki design="teaser-v" url="/satei/"]
+
+   見出しを地域に合わせる（エリア記事向け）
+     [fudosan_honki design="teaser" url="/satei/" width="640" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]
+
+   売却時期も聞く
+     [fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]
+
+   査定ページ本体（遷移先のページに貼る）
+     [fudosan_honki]
+
+   ★書き方の注意: 属性と属性の間には必ず半角スペースを入れてください。
+     × url="/satei/"width="640"
+     ○ url="/satei/" width="640"
+     ※ 抜けていても動くようにしてありますが、管理者にだけお知らせが出ます。
+
+   幅の目安: 500（既定）＝本文になじむ / 640＝存在感を出す / 100%＝幅いっぱい
 
    ※ お名前・電話番号・メールはティザーには置けません。
      個人情報は、利用目的の明示と同意チェックがある査定ページで
