@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.2
+ * Version: 1.7.3
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.2');
+define('FHS_VER', '1.7.3');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1846,6 +1846,9 @@ function fhs_shortcode($atts = array()) {
        両方に効いてしまい、片方の幅が意図せず変わる。 */
     .fhs-design-teaser,.fhs-design-teaser-v{margin-left:auto;margin-right:auto}
     .fhs-design-teaser .fhs-hint,.fhs-design-teaser-v .fhs-hint{display:none}
+    /* 縦：HTMLの順（タグ→バッジ→見出し）がそのまま見た目の順になる */
+    .fhs-design-teaser-v .fhs-ttags{margin-top:0;margin-bottom:11px}
+    .fhs-design-teaser-v .fhs-tbadge-row{margin-bottom:7px}
     .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
     .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}
     .fhs-tsub{font-size:14px;color:var(--fhs-muted);margin-top:5px;line-height:1.6}
@@ -1878,9 +1881,11 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-tcta button{max-width:520px;margin-top:6px}
     /* 横長は見出しも1行にまとめる（バッジ＋見出しを横並び。狭ければ折り返す） */
     .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px}
-    .fhs-design-teaser .fhs-tbadge-row{margin-bottom:0}
-    .fhs-design-teaser .fhs-ttags{margin-top:0}
-    .fhs-design-teaser .fhs-tsub{flex:1 1 100%;margin-top:0}
+    /* 横長は1行に並べるので、バッジ → 見出し → タグ の順に見せる（HTMLの順はタグが先） */
+    .fhs-design-teaser .fhs-tbadge-row{order:1;margin-bottom:0}
+    .fhs-design-teaser .fhs-ttitle{order:2}
+    .fhs-design-teaser .fhs-ttags{order:3;margin-top:0}
+    .fhs-design-teaser .fhs-tsub{order:4;flex:1 1 100%;margin-top:0}
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
     /* 見出しの横に並べるメリットのタグ */
@@ -1925,10 +1930,8 @@ function fhs_shortcode($atts = array()) {
     <form class="fhs-form">
       <div class="fhs-thead">
         <div class="fhs-ttexts">
-<?php if ($t_badge !== ''): ?>
-          <div class="fhs-tbadge-row"><span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span></div>
-<?php endif; ?>
-          <div class="fhs-ttitle"><?php if ($t_logo): ?><img class="fhs-ticon" src="<?php echo esc_url($t_logo); ?>" alt="<?php echo esc_attr(fhs_opt('operator_name', '')); ?>"><?php endif; ?><?php echo esc_html($t_title); ?></div>
+<?php /* タグを先に置く。縦ではこの順（タグ→バッジ→見出し）がそのまま見た目の順になり、
+         読み上げの順序とも一致する。横長は1行に並べるので、CSSのorderで位置だけ入れ替える。 */ ?>
 <?php if ($t_tags): ?>
           <div class="fhs-ttags">
 <?php foreach ($t_tags as $tag): ?>
@@ -1936,6 +1939,10 @@ function fhs_shortcode($atts = array()) {
 <?php endforeach; ?>
           </div>
 <?php endif; ?>
+<?php if ($t_badge !== ''): ?>
+          <div class="fhs-tbadge-row"><span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span></div>
+<?php endif; ?>
+          <div class="fhs-ttitle"><?php if ($t_logo): ?><img class="fhs-ticon" src="<?php echo esc_url($t_logo); ?>" alt="<?php echo esc_attr(fhs_opt('operator_name', '')); ?>"><?php endif; ?><?php echo esc_html($t_title); ?></div>
 <?php if ($t_sub !== ''): ?>
           <div class="fhs-tsub"><?php echo esc_html($t_sub); ?></div>
 <?php endif; ?>
