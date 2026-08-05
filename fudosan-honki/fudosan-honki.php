@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.6.0
+ * Version: 1.7.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.6.0');
+define('FHS_VER', '1.7.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -118,11 +118,33 @@ function fhs_property_fields() {
 function fhs_teaser_fields() {
     return array(
         'ptype'   => array('label' => '物件種別',          'type' => 'ptype'),
-        'address' => array('label' => '物件の住所',        'type' => 'text',   'ph' => '例：東京都渋谷区〇〇1-2-3'),
+        'address' => array('label' => '物件の住所',        'type' => 'text',   'ph' => ''),   // 入力例は fhs_address_placeholder()
         'survey'  => array('label' => 'ご希望の査定方法',   'type' => 'select', 'opts' => 'survey'),
         'purpose' => array('label' => 'ご事情・売却の理由', 'type' => 'select', 'opts' => 'purpose'),
         'timing'  => array('label' => '売却をご希望の時期', 'type' => 'select', 'opts' => 'timing'),
     );
+}
+
+/**
+ * 住所欄の入力例（プレースホルダ）。
+ *
+ * 「例：東京都渋谷区…」が固定で出ていると、岡山のサイトでは的外れに見える。
+ * 設定に例文があればそれを使い、無ければ運営者の所在地から市区町村を拾って作る。
+ * ★都道府県は付けない。市区町村単位で扱うサービスなので、県から書かせる必要がない。
+ */
+function fhs_address_placeholder() {
+    $custom = trim((string) fhs_opt('address_example', ''));
+    if ($custom !== '') return $custom;
+
+    $addr = trim((string) fhs_opt('operator_address', ''));
+    if ($addr !== '') {
+        // 先頭の都道府県を落としてから、市区町村（＋政令市の区）を拾う
+        $rest = preg_replace('/^\s*(東京都|北海道|京都府|大阪府|.{2,3}県)/u', '', $addr);
+        if (preg_match('/^\s*(.{1,8}?[市区町村](?:.{1,6}?区)?)/u', (string)$rest, $m)) {
+            return '例：' . $m[1] . '〇〇1-2-3';
+        }
+    }
+    return '例：〇〇市△△町1-2-3';
 }
 
 /** 「無料, 地場優良企業対応, 1社査定」のような文字列をタグの配列に。
@@ -437,6 +459,7 @@ function fhs_sanitize_options($in) {
         'notify_on'        => !empty($in['notify_on'])      ? '1' : '0',
         'show_marketing'   => !empty($in['show_marketing']) ? '1' : '0',
         'show_note'        => !empty($in['show_note'])      ? '1' : '0',
+        'step_form'        => !empty($in['step_form'])      ? '1' : '0',
         'third_party'      => !empty($in['third_party'])    ? '1' : '0',
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
         'logo_url'         => esc_url_raw($in['logo_url'] ?? ''),
@@ -444,6 +467,7 @@ function fhs_sanitize_options($in) {
         'teaser_badge'     => sanitize_text_field($in['teaser_badge'] ?? ''),
         'teaser_tags'      => sanitize_text_field($in['teaser_tags'] ?? ''),
         'satei_page_id'    => (int) ($in['satei_page_id'] ?? 0),
+        'address_example'  => sanitize_text_field($in['address_example'] ?? ''),
         // 自動返信メール
         'mail_subject'     => sanitize_text_field($in['mail_subject'] ?? ''),
         'mail_body'        => sanitize_textarea_field($in['mail_body'] ?? ''),
@@ -688,9 +712,11 @@ function fhs_test_mail() {
     if (!current_user_can('manage_options')) wp_die('権限がありません');
     check_admin_referer('fhs_test_mail');
     $to = wp_get_current_user()->user_email;
+    // サンプルの住所も、設定に合わせた入力例から作る（東京固定だと不自然なため）
+    $sample_addr = trim(str_replace('例：', '', fhs_address_placeholder()));
     $ctx = array(
         'name' => '山田 太郎', 'email' => $to, 'tel' => '090-1234-5678',
-        'ptype_label' => '中古マンション', 'address' => '東京都渋谷区〇〇1-2-3',
+        'ptype_label' => '中古マンション', 'address' => $sample_addr,
         'survey' => '訪問査定（実際に見てもらいたい）',
         'customer_details' => "■ お名前 : 山田 太郎\n■ 電話番号 : 090-1234-5678\n■ ご連絡しやすい時間帯 : 午後（12〜17時）",
         'property_details' => "■ 物件種別 : 中古マンション\n■ 物件住所 : 東京都渋谷区〇〇1-2-3\n■ ご希望の査定方法 : 訪問査定（実際に見てもらいたい）\n■ マンション名 : 〇〇マンション\n■ 専有面積（㎡） : 70\n■ 築年（西暦） : 2015",
@@ -769,6 +795,14 @@ function fhs_settings_page() {
                 <tr><th>運営者名（会社名）</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_name]" value="<?php echo esc_attr(fhs_opt('operator_name')); ?>" size="40" placeholder="例：ミカタ株式会社">
                     <p class="description">フォームとメールに表示されます。<strong>お客様が「どこの会社に自宅と連絡先を渡すのか」を判断する材料</strong>なので、必ずご記入ください。</p></td></tr>
                 <tr><th>所在地</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_address]" value="<?php echo esc_attr(fhs_opt('operator_address')); ?>" size="50" placeholder="例：岡山県岡山市北区○○1-2-3"></td></tr>
+                <tr><th>住所欄の入力例</th><td>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[address_example]" value="<?php echo esc_attr(fhs_opt('address_example')); ?>" size="50" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>">
+                    <p class="description">
+                        物件住所の欄に薄く表示される入力例です。空欄なら<strong>上の「所在地」から市区町村を読み取って自動で作ります</strong>
+                        （いまは「<?php echo esc_html(fhs_address_placeholder()); ?>」と表示されます）。<br>
+                        <strong>都道府県は入れていません。</strong>市区町村単位で扱うサービスのため、県から書かせる必要がないためです。
+                    </p>
+                </td></tr>
                 <tr><th>問い合わせ先</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_contact]" value="<?php echo esc_attr(fhs_opt('operator_contact')); ?>" size="40" placeholder="例：086-000-0000 / info@example.com"></td></tr>
                 <tr><th>送信元メール</th><td><input type="email" name="<?php echo FHS_OPT; ?>[from_email]" value="<?php echo esc_attr(fhs_opt('from_email')); ?>" size="40" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                     <p class="description">お客様への受付完了メールの差出人。空欄ならWordPressの既定の差出人になります。到達率のため WP Mail SMTP 等で SPF/DKIM を設定してください。</p></td></tr>
@@ -850,6 +884,17 @@ function fhs_settings_page() {
                 </tbody>
             </table>
             <?php endforeach; ?>
+
+            <h4 style="margin:26px 0 6px">見せ方</h4>
+            <table class="form-table"><tr><th>ステップ表示</th><td>
+                <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[step_form]" value="1" <?php checked(fhs_flag('step_form', true)); ?>> 査定ページのフォームを「物件 → ご状況 → ご連絡先」の3ステップに分けて表示する</label>
+                <p class="description">
+                    一画面に全部並べるより<strong>途中離脱が減ります</strong>（一括査定サイトはほぼこの形です）。<br>
+                    進み具合のバーが出て、「次へ進む」を押すたびにその画面の必須項目だけを確認します。
+                    <strong>お名前・電話番号は必ず最後のステップ</strong>で聞きます。<br>
+                    ティザーで入力済みのステップは自動で飛ばします。オフにすると従来どおり1画面に全項目を表示します。
+                </p>
+            </td></tr></table>
 
             <h4 style="margin:26px 0 6px">そのほかの欄</h4>
             <table class="form-table"><tr><th>表示する項目</th><td>
@@ -1596,6 +1641,14 @@ function fhs_shortcode($atts = array()) {
     $show_note   = fhs_flag('show_note', true) && !$compact;
     $show_mkt    = fhs_flag('show_marketing', true) && !$compact;
 
+    /* ステップ表示。一画面に20項目並ぶと身構えられるので、
+       「物件 → ご状況 → ご連絡先」の順に小分けにする（個人情報は必ず最後）。
+       compact とティザーは元々短いので分けない。 */
+    $step2       = ($situ_fields || $show_note);            // 中身が無ければ2ステップ目は作らない
+    $stepped     = !$teaser && !$compact && fhs_flag('step_form', true);
+    $step_titles = $step2 ? array('物件の情報', '売却のご状況', 'ご連絡先')
+                          : array('物件の情報', 'ご連絡先');
+
     // 第三者提供の有無で、利用目的と同意文の書き方を変える（個情法27条）
     $tp      = fhs_flag('third_party', false);
     $tp_name = fhs_opt('third_party_name', '当社が提携する不動産会社');
@@ -1650,7 +1703,7 @@ function fhs_shortcode($atts = array()) {
 <?php endforeach; ?>
           </select>
 <?php else: ?>
-          <input type="text" name="<?php echo esc_attr($nm); ?>" id="<?php echo esc_attr($id); ?>" class="fhs-typed" placeholder="<?php echo esc_attr(isset($fd['ph']) ? $fd['ph'] : ''); ?>">
+          <input type="text" name="<?php echo esc_attr($nm); ?>" id="<?php echo esc_attr($id); ?>" class="fhs-typed" placeholder="<?php echo esc_attr($key === 'address' ? fhs_address_placeholder() : (isset($fd['ph']) ? $fd['ph'] : '')); ?>">
 <?php endif; ?>
         </div>
 <?php return ob_get_clean();
@@ -1728,6 +1781,19 @@ function fhs_shortcode($atts = array()) {
     .fhs-check{display:flex;gap:9px;align-items:flex-start;margin-top:14px}
     .fhs-check input{width:auto;margin-top:6px;transform:scale(1.2)}.fhs-check label{margin:0;font-weight:400;font-size:16px}
     .fhs-wrap button{margin-top:24px;width:100%;background:var(--fhs-brand);color:var(--fhs-btn-text);border:0;border-radius:10px;padding:18px;font-size:20px;font-weight:700;cursor:pointer}
+    /* ステップ表示。テーマによっては div の既定が変わるので明示しておく */
+    .fhs-wrap .fhs-step{display:block}
+    .fhs-steps{margin-bottom:22px}
+    .fhs-stepbar{display:flex;gap:6px}
+    .fhs-stepdot{flex:1;height:6px;border-radius:3px;background:#e5e7eb;transition:background .25s}
+    .fhs-stepdot.is-on{background:var(--fhs-brand)}
+    .fhs-stepnow{margin-top:9px;font-size:14px;font-weight:700;color:var(--fhs-muted)}
+    .fhs-stepnow b{color:var(--fhs-brand)}
+    .fhs-nav{display:flex;gap:12px;align-items:stretch}
+    .fhs-nav button{margin-top:24px}
+    .fhs-wrap .fhs-back{flex:0 0 34%;background:#fff;color:var(--fhs-muted);border:1px solid #cbd5e1;font-size:17px}
+    .fhs-wrap .fhs-back:hover{filter:none;background:#f6f8fa}
+    @media(max-width:480px){.fhs-wrap .fhs-back{flex:0 0 38%;font-size:15px;padding:14px 8px}}
     .fhs-wrap button:hover{filter:brightness(.93)}
     .fhs-wrap button:disabled{opacity:.6;cursor:wait;filter:none}
     .fhs-disc{background:#fff8e6;border:1px solid #f0e0a8;border-radius:10px;padding:15px 17px;font-size:14px;color:#6b5a12;margin-top:18px}
@@ -1906,13 +1972,25 @@ function fhs_shortcode($atts = array()) {
         <input type="text" name="fhs_website" id="<?php echo esc_attr($uid . '-website'); ?>" tabindex="-1" autocomplete="off">
       </div>
 
+<?php if ($stepped): /* 進み具合。ゴールが見えると最後まで書いてもらいやすい */ ?>
+      <div class="fhs-steps">
+        <div class="fhs-stepbar">
+<?php for ($i = 1; $i <= count($step_titles); $i++): ?>
+          <span class="fhs-stepdot" data-step="<?php echo $i; ?>"></span>
+<?php endfor; ?>
+        </div>
+        <div class="fhs-stepnow"></div>
+      </div>
+<?php endif; ?>
+
+<?php if ($stepped): ?><div class="fhs-step" data-step="1"><?php endif; ?>
       <div class="fhs-section">物件の情報</div>
       <label for="<?php echo esc_attr($uid . '-ptype'); ?>">物件種別<span class="fhs-req">必須</span></label>
       <select name="ptype" id="<?php echo esc_attr($uid . '-ptype'); ?>" required><?php echo $ptype_options; ?></select>
       <div class="fhs-hint">選ぶと、その種別の入力項目が表示されます</div>
 
       <label for="<?php echo esc_attr($uid . '-address'); ?>">物件の住所<span class="fhs-req">必須</span></label>
-      <input type="text" name="address" id="<?php echo esc_attr($uid . '-address'); ?>" placeholder="例：東京都渋谷区〇〇1-2-3" required>
+      <input type="text" name="address" id="<?php echo esc_attr($uid . '-address'); ?>" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>" required>
       <div class="fhs-hint">丁目・番地までご記入ください（建物名・部屋番号は下の欄で結構です）</div>
 
 <?php foreach (fhs_property_fields() as $pt => $flds):
@@ -1922,7 +2000,10 @@ function fhs_shortcode($atts = array()) {
 <?php   foreach ($vis as $fd) { echo $render_field($fd, $pt . '__', $uid); } ?>
       </div>
 <?php endforeach; ?>
+<?php if ($stepped): ?></div><?php endif; /* step 1 ここまで */ ?>
 
+<?php if ($step2): ?>
+<?php if ($stepped): ?><div class="fhs-step" data-step="2" style="display:none"><?php endif; ?>
 <?php if ($situ_fields): ?>
       <div class="fhs-section">売却のご状況</div>
       <div class="fhs-group">
@@ -1934,7 +2015,10 @@ function fhs_shortcode($atts = array()) {
       <label for="<?php echo esc_attr($uid . '-note'); ?>">備考・ご要望<span class="fhs-opt">任意</span></label>
       <textarea name="note_text" id="<?php echo esc_attr($uid . '-note'); ?>" rows="2" placeholder="ご不明な点、ご希望などがあればご記入ください"></textarea>
 <?php endif; ?>
+<?php if ($stepped): ?></div><?php endif; /* step 2 ここまで */ ?>
+<?php endif; ?>
 
+<?php if ($stepped): ?><div class="fhs-step" data-step="<?php echo $step2 ? 3 : 2; ?>" style="display:none"><?php endif; ?>
       <div class="fhs-section">ご連絡先</div>
 <?php if ($cust_fields): ?>
       <div class="fhs-group">
@@ -1972,8 +2056,15 @@ function fhs_shortcode($atts = array()) {
 <?php if ($compact): ?>
       <input type="hidden" name="compact" value="1">
 <?php endif; ?>
+<?php if ($stepped): ?></div><?php endif; /* 最終ステップ ここまで */ ?>
 
-      <button class="fhs-submit" type="submit"><?php echo esc_html($btn); ?></button>
+      <div class="fhs-nav">
+<?php if ($stepped): ?>
+        <button type="button" class="fhs-back" style="display:none">← 戻る</button>
+        <button type="button" class="fhs-nextstep">次へ進む</button>
+<?php endif; ?>
+        <button class="fhs-submit" type="submit"<?php echo $stepped ? ' style="display:none"' : ''; ?>><?php echo esc_html($btn); ?></button>
+      </div>
     </form>
 <?php endif; /* ===== 分岐ここまで ===== */ ?>
 
@@ -2112,8 +2203,81 @@ function fhs_shortcode($atts = array()) {
     updateFormState();
   }
 
+  /* ===== ステップ表示 =====
+     一画面に全部出すより離脱が減る。個人情報は必ず最後のステップに置く。
+     ページ遷移はしない（読み込み待ちで離脱するため、表示の切り替えだけで済ませる）。 */
+  var steps = wrap.querySelectorAll('.fhs-step');
+  var STEPPED = steps.length > 1;
+  var stepNow = 0;
+  var stepDots = wrap.querySelectorAll('.fhs-stepdot');
+  var stepLabel = wrap.querySelector('.fhs-stepnow');
+  var backBtn = wrap.querySelector('.fhs-back');
+  var nextBtn = wrap.querySelector('.fhs-nextstep');
+  var STEP_TITLES = <?php echo wp_json_encode($stepped ? $step_titles : array()); ?>;
+
+  /** そのステップの中で、まだ埋まっていない必須項目を返す */
+  function missingIn(i){
+    if (!STEPPED) return [];
+    var box = steps[i], out = [];
+    var els = box.querySelectorAll('select[name="ptype"], input[name="address"], input[name="email"], [data-req="1"]');
+    Array.prototype.forEach.call(els, function(el){
+      if (!el.offsetParent && el.type !== 'hidden') return;      // 表示されていない種別の欄は対象外
+      if (el.closest('.fhs-group[data-ptype]') && el.closest('.fhs-group[data-ptype]').style.display === 'none') return;
+      if (!el.value || String(el.value).trim() === '') out.push(el);
+    });
+    var agree = box.querySelector('input[name="agree"]');
+    if (agree && !agree.checked) out.push(agree);
+    return out;
+  }
+
+  function labelTextOf(el){
+    if (el.name === 'agree') return '個人情報の取扱いへの同意';
+    var lbl = el.previousElementSibling;
+    if (!lbl || lbl.tagName !== 'LABEL') {
+      var byId = el.id ? wrap.querySelector('label[for="' + el.id + '"]') : null;
+      lbl = byId || lbl;
+    }
+    if (!lbl) return 'この項目';
+    return lbl.textContent.replace(/必須|任意|✓/g, '').trim();
+  }
+
+  function showStep(i){
+    if (!STEPPED) return;
+    stepNow = Math.max(0, Math.min(steps.length - 1, i));
+    Array.prototype.forEach.call(steps, function(s, n){ s.style.display = (n === stepNow) ? '' : 'none'; });
+    Array.prototype.forEach.call(stepDots, function(d, n){ d.classList.toggle('is-on', n <= stepNow); });
+    if (stepLabel) stepLabel.innerHTML = 'STEP <b>' + (stepNow + 1) + '</b> / ' + steps.length + '　' + esc(STEP_TITLES[stepNow] || '');
+    var last = (stepNow === steps.length - 1);
+    if (nextBtn) nextBtn.style.display = last ? 'none' : '';
+    if (btn)     btn.style.display     = last ? '' : 'none';
+    if (backBtn) backBtn.style.display = (stepNow === 0) ? 'none' : '';
+    errBox.innerHTML = '';
+    updateFormState();
+  }
+
+  if (STEPPED) {
+    if (nextBtn) nextBtn.addEventListener('click', function(){
+      var miss = missingIn(stepNow);
+      if (miss.length) {
+        errBox.innerHTML = miss.map(function(el){
+          return '<div class="fhs-err">「' + esc(labelTextOf(el)) + '」を入力してください。</div>';
+        }).join('');
+        errBox.scrollIntoView({ behavior:'smooth', block:'center' });
+        if (miss[0].focus) miss[0].focus();
+        return;
+      }
+      showStep(stepNow + 1);
+      wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+    if (backBtn) backBtn.addEventListener('click', function(){
+      showStep(stepNow - 1);
+      wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+    showStep(0);
+  }
+
   function scrollToFirstEmpty(){
-    var target = resumeBox || wrap.querySelector('.fhs-next') || btn;
+    var target = resumeBox || wrap.querySelector('.fhs-typed.fhs-next, input.fhs-next, select.fhs-next') || btn;
     if (!target) return;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(function(){
@@ -2152,8 +2316,19 @@ function fhs_shortcode($atts = array()) {
       setTimeout(applyHandoff, 0);
       setTimeout(applyHandoff, 250);
       window.addEventListener('pageshow', function(e){ if (e.persisted) applyHandoff(); });
-      insertResumeBanner();
-      scrollToFirstEmpty();
+
+      if (STEPPED) {
+        /* 引き継ぎで埋まったステップは飛ばして、最初に書くところから始める */
+        var start = steps.length - 1;
+        for (var si = 0; si < steps.length; si++) {
+          if (missingIn(si).length) { start = si; break; }
+        }
+        showStep(start);
+        if (start > 0) scrollToFirstEmpty();
+      } else {
+        insertResumeBanner();
+        scrollToFirstEmpty();
+      }
     }
   }
 
