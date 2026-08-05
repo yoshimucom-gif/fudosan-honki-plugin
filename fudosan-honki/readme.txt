@@ -33,8 +33,11 @@
    属性: button="ボタン文言"
 
    ■ ティザー（記事に置く入口フォーム）
-   [fudosan_honki design="teaser"   url="/satei/"]  横長。記事の途中・記事末に
-   [fudosan_honki design="teaser-v" url="/satei/"]  縦（幅440px）。サイドバーに
+   [fudosan_honki design="teaser"   url="/satei/"]  横長。入力欄が横一列に並ぶ
+   [fudosan_honki design="teaser-v" url="/satei/"]  縦。常に縦積み（幅440px）
+
+   横長は「物件種別」「物件の住所」などを横一列に並べます。幅が足りなく
+   なると自動的に縦積みへ切り替わるので、スマホでもそのまま使えます。
 
    2〜3項目だけ聞いて、続きは査定ページで書いてもらう形です。
    入力内容は査定ページに自動で引き継がれ、「↓ 続きはこちらから」と
@@ -43,13 +46,15 @@
 
    属性:
      url      必須。遷移先＝[fudosan_honki] を貼った査定ページのURL
-     width    横幅。省略時は横長500px・縦440px（どちらも中央寄せ）。
-              width="640" のように数字だけ書けばpx、width="100%" で幅いっぱい
+     width    横幅。省略時は 横長＝本文の幅いっぱい / 縦＝440px（中央寄せ）
+              width="820" のように数字だけ書けばpx、width="100%" も可
+              ※狭くすると入力欄は自動で縦積みになります（およそ560px以下）
      fields   聞く項目と順番。ptype / address / survey / purpose / timing
               から選ぶ（省略時 ptype,address）
      title    見出し（省略時：60秒でかんたん入力）
      subtitle 小見出し
-     badge    ボタン上のバッジ（省略時：無料・秘密厳守。badge="" で非表示）
+     badge    見出しの上（横長では見出しの左）に出すバッジ
+              省略時：無料・秘密厳守。badge="" で非表示
      steps    steps="0" で「STEP 1」表記を消す
      logo     見出しの左に出すアイコン画像URL
               ※ふだんは 設定→デザイン→「見出しのアイコン」で設定してください
@@ -64,22 +69,19 @@
    ■ そのままコピーして使える例
    （/satei/ の部分だけ、ご自身の査定ページのURLに置き換えてください）
 
-   記事の途中に置く（幅500px・基本）
+   記事の途中に置く（横長・入力欄が横一列）
      [fudosan_honki design="teaser" url="/satei/"]
 
-   もう少し大きく見せる（幅640px）
-     [fudosan_honki design="teaser" url="/satei/" width="640"]
+   幅を抑える（本文が広いとき）
+     [fudosan_honki design="teaser" url="/satei/" width="820"]
 
-   本文の幅いっぱいに
-     [fudosan_honki design="teaser" url="/satei/" width="100%"]
-
-   サイドバーに置く（縦・幅440px）
+   サイドバーに置く（縦積み・幅440px）
      [fudosan_honki design="teaser-v" url="/satei/"]
 
    見出しを地域に合わせる（エリア記事向け）
-     [fudosan_honki design="teaser" url="/satei/" width="640" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]
+     [fudosan_honki design="teaser" url="/satei/" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]
 
-   売却時期も聞く
+   売却時期も聞く（横一列に3項目）
      [fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]
 
    査定ページ本体（遷移先のページに貼る）
@@ -90,7 +92,7 @@
      ○ url="/satei/" width="640"
      ※ 抜けていても動くようにしてありますが、管理者にだけお知らせが出ます。
 
-   幅の目安: 500（既定）＝本文になじむ / 640＝存在感を出す / 100%＝幅いっぱい
+   横長と縦の違い: 横長は入力欄が横一列に並びます。縦は常に縦積みです。
 
    ※ お名前・電話番号・メールはティザーには置けません。
      個人情報は、利用目的の明示と同意チェックがある査定ページで

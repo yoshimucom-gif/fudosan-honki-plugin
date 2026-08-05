@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.3.1
+ * Version: 1.4.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.3.1');
+define('FHS_VER', '1.4.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -859,10 +859,11 @@ function fhs_settings_page() {
                     <td><code>[fudosan_honki design="card"]</code><br><span class="description">全項目を枠＋影のカードで表示。</span></td></tr>
                 <tr style="background:#fffbe6"><td><strong>ティザー（横長）</strong><br><span class="description">記事の途中・記事末</span></td>
                     <td><code>[fudosan_honki design="teaser" url="/satei/"]</code><br>
-                        <span class="description"><strong>2〜3項目だけ</strong>入力してもらい、ボタンで <code>url</code> のページへ。入力値は自動で引き継がれます。物件種別は<strong>タイルを1タップ</strong>で選べます。</span></td></tr>
+                        <span class="description"><strong>入力欄が横一列に並ぶ</strong>横長タイプ。2〜3項目だけ入力してもらい、ボタンで <code>url</code> のページへ。入力値は自動で引き継がれます。物件種別は<strong>タイルを1タップ</strong>で選べます。<br>
+                        幅は既定で本文いっぱい。<strong>狭い場所やスマホでは自動的に縦積みに切り替わります。</strong></span></td></tr>
                 <tr style="background:#fffbe6"><td><strong>ティザー（縦）</strong><br><span class="description">サイドバー・記事末</span></td>
                     <td><code>[fudosan_honki design="teaser-v" url="/satei/"]</code><br>
-                        <span class="description">同じ内容を幅440pxの縦カードで。</span></td></tr>
+                        <span class="description">同じ内容を<strong>常に縦積み</strong>・幅440pxのカードで。サイドバーなど幅の狭い場所向け。</span></td></tr>
                 </tbody>
             </table>
 
@@ -879,8 +880,8 @@ function fhs_settings_page() {
                 <tr><td><code>url</code></td><td><strong>必須。</strong>ボタンの遷移先＝<code>[fudosan_honki]</code> を貼った査定ページのURL。例：<code>url="/satei/"</code></td></tr>
                 <tr><td><code>fields</code></td><td>聞く項目と順番。<code>ptype</code>（物件種別）/ <code>address</code>（物件の住所）/ <code>survey</code>（査定方法）/ <code>purpose</code>（ご事情）/ <code>timing</code>（希望時期）から選ぶ。省略時は <code>ptype,address</code><br>
                     <span class="description">※ <strong>お名前・電話番号・メールはティザーには置けません。</strong>個人情報は、利用目的の明示と同意チェックがある査定ページで受け取る決まりにしているためです。</span></td></tr>
-                <tr><td><code>width</code></td><td>横幅。<strong>省略時は横長500px・縦440px</strong>（どちらも中央寄せ）。<code>width="640"</code> のように数字だけ書けばpx、<code>width="100%"</code> で本文の幅いっぱい。<br>
-                    <span class="description">画面が幅より狭いときは自動で画面に合わせ、物件種別のタイルは縦に並びます。</span></td></tr>
+                <tr><td><code>width</code></td><td>横幅。<strong>省略時は横長＝本文の幅いっぱい、縦＝440px</strong>（どちらも中央寄せ）。<code>width="820"</code> のように数字だけ書けばpx、<code>width="100%"</code> も指定できます。<br>
+                    <span class="description">狭くすると入力欄は自動的に縦積みへ切り替わります（おおむね560px以下から）。</span></td></tr>
                 <tr><td><code>title</code></td><td>見出し（省略時：60秒でかんたん入力）</td></tr>
                 <tr><td><code>subtitle</code></td><td>小見出し（省略時は表示なし）</td></tr>
                 <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
@@ -900,32 +901,27 @@ function fhs_settings_page() {
                 <thead><tr><th style="width:190px">やりたいこと</th><th>ショートコード</th><th style="width:90px"></th></tr></thead>
                 <tbody>
                 <tr>
-                    <td><strong>記事の途中に置く</strong><br><span class="description">いちばん基本。幅500px</span></td>
+                    <td><strong>記事の途中に置く</strong><br><span class="description">いちばん基本。入力欄が横一列</span></td>
                     <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
-                    <td><strong>もう少し大きく見せる</strong><br><span class="description">幅640px</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="640"]</code></td>
+                    <td><strong>幅を抑える</strong><br><span class="description">本文が広いときに</span></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="820"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
-                    <td><strong>本文の幅いっぱいに</strong></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="100%"]</code></td>
-                    <td><button type="button" class="button fhs-copy">コピー</button></td>
-                </tr>
-                <tr>
-                    <td><strong>サイドバーに置く</strong><br><span class="description">縦・幅440px</span></td>
+                    <td><strong>サイドバーに置く</strong><br><span class="description">縦積み・幅440px</span></td>
                     <td><code class="fhs-copy-src">[fudosan_honki design="teaser-v" url="/satei/"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
                     <td><strong>見出しを地域に合わせる</strong><br><span class="description">エリア記事向け</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="640" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
-                    <td><strong>売却時期も聞く</strong><br><span class="description">項目を1つ増やす</span></td>
+                    <td><strong>売却時期も聞く</strong><br><span class="description">横一列に3項目</span></td>
                     <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
@@ -942,7 +938,10 @@ function fhs_settings_page() {
                 <span class="description">※ スペースが抜けていても動くようにしてありますが、その場合はフォームの上に
                 （管理者にだけ見える）お知らせが出ます。</span>
             </p>
-            <p class="description">幅の目安：<code>500</code>（既定）＝本文になじむ ／ <code>640</code>＝存在感を出す ／ <code>100%</code>＝本文の幅いっぱい</p>
+            <p class="description">
+                <strong>横長と縦の違い：</strong>横長（<code>teaser</code>）は<strong>入力欄が横一列に並びます</strong>。縦（<code>teaser-v</code>）は常に縦積みです。<br>
+                横長は幅が足りなくなると自動で縦積みに切り替わるので、スマホでもそのまま使えます。
+            </p>
             <p class="description">属性 <code>button</code> はどのデザインでも使えます。例：<code>[fudosan_honki button="無料で査定を依頼する"]</code></p>
 
             <h3>申し込み後の動き</h3>
@@ -1431,7 +1430,8 @@ function fhs_shortcode($atts = array()) {
     if ($teaser) {
         $w = trim((string)$a['width']);
         if ($w !== '' && preg_match('/^\d+$/', $w)) $w .= 'px';
-        if (!preg_match('/^\d+(px|%|em|rem|vw)$/', $w)) $w = ($design === 'teaser-v') ? '440px' : '500px';
+        // 横長は入力欄を横に並べるため、既定は本文の幅いっぱい。縦は440px
+        if (!preg_match('/^\d+(px|%|em|rem|vw)$/', $w)) $w = ($design === 'teaser-v') ? '440px' : '100%';
         $t_width = $w;
     }
 
@@ -1647,18 +1647,27 @@ function fhs_shortcode($atts = array()) {
     /* ★セレクタは .fhs-wrap 付きで書くこと。上の .fhs-wrap input / .fhs-wrap label より
        詳細度が低いと width:100% や display:block に負け、隠したはずのラジオが
        画面幅いっぱいに広がって横スクロールが出る。 */
-    .fhs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    /* タイルは3つ横並びが基本。入らなくなったら自動で2つ・1つに落ちる */
+    .fhs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px}
     .fhs-wrap .fhs-tile-input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0;pointer-events:none}
     .fhs-wrap .fhs-tile{display:flex;align-items:center;justify-content:center;text-align:center;background:#fff;border:2px solid #cbd5e1;border-radius:10px;padding:15px 8px;font-weight:700;font-size:16px;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,color .15s;margin:0;line-height:1.3;min-height:56px}
     .fhs-wrap .fhs-tile:hover{border-color:rgba(var(--fhs-brand-rgb),.6)}
     .fhs-wrap .fhs-tile-input:checked + .fhs-tile{border-color:var(--fhs-brand);background:rgba(var(--fhs-brand-rgb),.08);color:var(--fhs-brand)}
     .fhs-wrap .fhs-tile-input:focus-visible + .fhs-tile{box-shadow:0 0 0 3px rgba(var(--fhs-brand-rgb),.25)}
-    /* 横長: 入力欄を横に並べる（狭ければ自動で縦積み） */
-    .fhs-design-teaser .fhs-trow{display:flex;flex-wrap:wrap;gap:0 20px;align-items:flex-start}
-    .fhs-design-teaser .fhs-tfield{flex:1 1 260px;min-width:0}
-    .fhs-design-teaser .fhs-tfield-ptype{flex:1 1 100%}
+    /* ===== 横長：入力欄を横一列に並べる =====
+       ★ビューポート幅のメディアクエリではなく flex-wrap で折り返す。
+         幅はショートコードの width で決まるので、画面が広くてもカードが狭いことがある。
+         各項目に「これ以上は縮まない幅」を持たせ、入らなくなったら自動で下に落とす。 */
+    .fhs-design-teaser .fhs-trow{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-start}
+    .fhs-design-teaser .fhs-tfield{flex:1 1 240px;min-width:0}
+    .fhs-design-teaser .fhs-tfield-ptype{flex:1.35 1 330px}   /* タイル3つぶん確保する */
+    .fhs-design-teaser .fhs-tfield > label{margin-top:0}
     .fhs-design-teaser .fhs-tcta{flex:1 1 100%;display:flex;flex-direction:column;align-items:center}
-    .fhs-design-teaser .fhs-tcta button{max-width:520px}
+    .fhs-design-teaser .fhs-tcta button{max-width:520px;margin-top:6px}
+    /* 横長は見出しも1行にまとめる（バッジ＋見出しを横並び。狭ければ折り返す） */
+    .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px}
+    .fhs-design-teaser .fhs-tbadge-row{margin-bottom:0}
+    .fhs-design-teaser .fhs-tsub{flex:1 1 100%;margin-top:0}
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
     .fhs-tbadge{display:inline-block;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
