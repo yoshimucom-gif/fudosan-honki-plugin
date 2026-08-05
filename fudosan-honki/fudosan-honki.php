@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.2.1');
+define('FHS_VER', '1.2.2');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1598,7 +1598,6 @@ function fhs_shortcode($atts = array()) {
     /* ボタン上のリボンバッジ */
     .fhs-tbadge{position:relative;top:12px;z-index:1;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1;box-shadow:0 1px 4px rgba(16,24,40,.08)}
     .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.7;text-align:center}
-    .fhs-tdisc{color:var(--fhs-muted);font-size:12px;margin-top:10px;line-height:1.7;text-align:center}
     .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px;line-height:1.8}
     /* 自動で拾えている場合は「エラー」ではないので、色を落とす */
     .fhs-admin-warn.fhs-admin-note{background:#fff8e6;border-color:#f0e0a8;color:#6b5a12}
@@ -1654,7 +1653,9 @@ function fhs_shortcode($atts = array()) {
       </div>
       <div class="fhs-tnote"><?php echo esc_html($t_note !== '' ? $t_note
           : '入力内容は次のページに引き継がれます。この時点ではまだ送信されません。'); ?></div>
-      <div class="fhs-tdisc">担当者がお伝えする価格は参考価格の情報提供であり、不動産鑑定士による鑑定評価ではありません。</div>
+      <?php /* ティザーには免責を置かない。ここでは価格を一切示さず、申し込みも受け付けない
+               （次のページへ移るだけ）ため。免責が要るのは価格を示す場面と申し込みを受け付ける場面で、
+               それは遷移先の本フォーム・完了画面・自動返信メールに必ず表示される。 */ ?>
     </form>
 <?php else: /* ===== 通常のフォーム ===== */ ?>
 <?php $lead = fhs_opt('lead_text'); if ($lead !== ''): ?>
