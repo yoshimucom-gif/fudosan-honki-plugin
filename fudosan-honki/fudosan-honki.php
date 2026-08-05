@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.1.0');
+define('FHS_VER', '1.1.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -793,6 +793,8 @@ function fhs_settings_page() {
                 <tr><td><code>url</code></td><td><strong>必須。</strong>ボタンの遷移先＝<code>[fudosan_honki]</code> を貼った査定ページのURL。例：<code>url="/satei/"</code></td></tr>
                 <tr><td><code>fields</code></td><td>聞く項目と順番。<code>ptype</code>（物件種別）/ <code>address</code>（物件の住所）/ <code>survey</code>（査定方法）/ <code>purpose</code>（ご事情）/ <code>timing</code>（希望時期）から選ぶ。省略時は <code>ptype,address</code><br>
                     <span class="description">※ <strong>お名前・電話番号・メールはティザーには置けません。</strong>個人情報は、利用目的の明示と同意チェックがある査定ページで受け取る決まりにしているためです。</span></td></tr>
+                <tr><td><code>width</code></td><td>横幅。<strong>省略時は横長500px・縦440px</strong>（どちらも中央寄せ）。<code>width="640"</code> のように数字だけ書けばpx、<code>width="100%"</code> で本文の幅いっぱい。<br>
+                    <span class="description">画面が幅より狭いときは自動で画面に合わせ、物件種別のタイルは縦に並びます。</span></td></tr>
                 <tr><td><code>title</code></td><td>見出し（省略時：60秒でかんたん入力）</td></tr>
                 <tr><td><code>subtitle</code></td><td>小見出し（省略時は表示なし）</td></tr>
                 <tr><td><code>badge</code></td><td>ボタン上の小さなバッジ（省略時：無料・秘密厳守）。<code>badge=""</code> で非表示</td></tr>
@@ -1172,7 +1174,7 @@ function fhs_shortcode($atts = array()) {
         'design' => 'default', 'button' => '',
         // ティザー用
         'url' => '', 'title' => '', 'subtitle' => '', 'note' => '', 'fields' => '',
-        'logo' => '', 'badge' => '', 'steps' => '1',
+        'logo' => '', 'badge' => '', 'steps' => '1', 'width' => '',
     ), $atts, 'fudosan_honki');
     $design  = in_array($a['design'], array('default', 'compact', 'card', 'teaser', 'teaser-v'), true) ? $a['design'] : 'default';
     $compact = ($design === 'compact');
@@ -1189,6 +1191,16 @@ function fhs_shortcode($atts = array()) {
     $t_badge  = isset($atts['badge']) ? sanitize_text_field($a['badge'])    : '無料・秘密厳守';
     $t_steps  = ($a['steps'] !== '0' && $a['steps'] !== '');
     $t_fields = $teaser ? fhs_parse_teaser_fields($a['fields']) : array();
+
+    /* ティザーの横幅。数字だけなら px として扱う（width="500"）。
+       width="100%" で本文の幅いっぱいにもできる。既定は横長500px / 縦440px。 */
+    $t_width = '';
+    if ($teaser) {
+        $w = trim((string)$a['width']);
+        if ($w !== '' && preg_match('/^\d+$/', $w)) $w .= 'px';
+        if (!preg_match('/^\d+(px|%|em|rem|vw)$/', $w)) $w = ($design === 'teaser-v') ? '440px' : '500px';
+        $t_width = $w;
+    }
 
     $c_brand    = fhs_opt('color_brand', '#1f6feb');
     $c_btn_text = fhs_opt('color_btn_text', '#ffffff');
@@ -1308,9 +1320,13 @@ function fhs_shortcode($atts = array()) {
     };
 
     ob_start(); ?>
-<div class="fhs-wrap fhs-design-<?php echo esc_attr($design); ?>" id="<?php echo esc_attr($uid); ?>">
+<div class="fhs-wrap fhs-design-<?php echo esc_attr($design); ?>" id="<?php echo esc_attr($uid); ?>"<?php
+  echo $t_width ? ' style="max-width:' . esc_attr($t_width) . '"' : ''; ?>>
   <style>
     .fhs-wrap{--fhs-brand:<?php echo esc_attr($c_brand); ?>;--fhs-brand-rgb:<?php echo esc_attr($c_brand_rgb); ?>;--fhs-btn-text:<?php echo esc_attr($c_btn_text); ?>;--fhs-title:<?php echo esc_attr($c_title); ?>;--fhs-badge-bg:<?php echo esc_attr($c_badge); ?>;--fhs-ink:#1a1f36;--fhs-muted:#6b7280;--fhs-line:#e5e7eb;width:100%;max-width:none;margin:0;color:var(--fhs-ink);font-family:inherit;line-height:1.75;font-size:17px}
+    /* テーマ側が box-sizing を当てているかどうかで、余白ぶん高さ・幅がずれる。
+       このフォームの中だけは border-box に固定して、どのテーマでも同じ見た目にする。 */
+    .fhs-wrap,.fhs-wrap *{box-sizing:border-box}
     .fhs-card{background:transparent;border:0;border-radius:0;padding:0 0 28px}
     .fhs-wrap{overflow-wrap:anywhere}   /* 長いメールアドレスや住所で横スクロールさせない */
     .fhs-card > :last-child{margin-bottom:0}
@@ -1380,7 +1396,10 @@ function fhs_shortcode($atts = array()) {
 
     /* ============ ティザー（記事内などに置く入口フォーム） ============ */
     .fhs-design-teaser .fhs-card,.fhs-design-teaser-v .fhs-card{background:#fff;border:1px solid var(--fhs-line);border-radius:14px;padding:22px 22px 24px;box-shadow:0 8px 28px rgba(16,24,40,.10)}
-    .fhs-design-teaser-v{max-width:440px}
+    /* 記事の中に置くので中央寄せ。★幅(max-width)はラッパのインラインstyleで個別に指定する。
+       ここに書くと、同じページに横長と縦を両方置いたとき、後から出力されたCSSが
+       両方に効いてしまい、片方の幅が意図せず変わる。 */
+    .fhs-design-teaser,.fhs-design-teaser-v{margin-left:auto;margin-right:auto}
     .fhs-design-teaser .fhs-hint,.fhs-design-teaser-v .fhs-hint{display:none}
     .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
     .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}

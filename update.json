@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.1.0\n・記事に置ける「ティザー（入口フォーム）」を追加しました。2〜3項目だけ入力してもらい、続きは査定ページで書いてもらう形です（横長・縦の2種類）\n・ティザーの入力内容は査定ページに自動で引き継がれ、「続きはこちらから」と案内して次に書く欄まで自動でスクロールします\n・物件種別をタイルで1タップ選択できるようにしました"
+    "changelog": "1.1.1\n・ティザーの横幅を調整できるようにしました（width属性。省略時は横長500px・縦440pxで中央寄せ）\n・物件種別のタイルの高さが、テーマによって不必要に大きくなることがある問題を修正しました"
   }
 }

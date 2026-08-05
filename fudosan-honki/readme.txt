@@ -43,6 +43,8 @@
 
    属性:
      url      必須。遷移先＝[fudosan_honki] を貼った査定ページのURL
+     width    横幅。省略時は横長500px・縦440px（どちらも中央寄せ）。
+              width="640" のように数字だけ書けばpx、width="100%" で幅いっぱい
      fields   聞く項目と順番。ptype / address / survey / purpose / timing
               から選ぶ（省略時 ptype,address）
      title    見出し（省略時：60秒でかんたん入力）

@@ -51,7 +51,11 @@ fudosan-honki-wp/
 
 2〜3項目だけ聞いて査定ページへ送る。物件種別は**タイルを1タップ**で選ぶ形（セレクトより離脱が少ない）。
 `fields` で聞く項目と順番を指定（`ptype` / `address` / `survey` / `purpose` / `timing`）。
+`width` で横幅（既定は横長500px / 縦440px、どちらも中央寄せ。`width="640"` はpx、`width="100%"` も可）。
 `title` `subtitle` `badge` `steps` `logo` `note` `button` で見せ方を調整できる。
+
+幅は**ラッパのインラインstyle**で出す。CSSに書くと、同じページに横長と縦を両方置いたとき
+後から出力されたルールが両方に効いて片方の幅が変わってしまう。
 
 **引き継ぎは `sessionStorage`（同一タブ）で行い、URLのクエリには一切載せない。**
 物件住所という個人に結びつく情報をURLに置くと、ブラウザ履歴や外部サイトへのリファラに残るため。
@@ -99,3 +103,7 @@ push すると `raw.githubusercontent.com` の `update.json` が更新され、
 - `label for` が固定idだと、同一ページに2つ置いたとき2つ目のチェックが押せない → `$uid` で一意化
 - `type="number"` は全角数字を打つと値が空になる → `type="text" + inputmode` にして PHP 側で半角化
 - ブラウザバックで種別が復元されても `change` は発火しない → `pageshow` と遅延実行で再反映
+- 隠しラジオ（タイル選択）の `width:1px` が `.fhs-wrap input{width:100%}` に詳細度で負け、
+  幅いっぱいに広がって横スクロールが出た → teaser系セレクタは必ず `.fhs-wrap` を付ける
+- `box-sizing` はテーマ次第。指定がないと padding/border のぶん高さ・幅がずれる
+  → `.fhs-wrap,.fhs-wrap *{box-sizing:border-box}` でフォーム内だけ固定
