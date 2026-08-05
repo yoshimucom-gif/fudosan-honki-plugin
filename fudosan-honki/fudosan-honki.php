@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.2.2
+ * Version: 1.2.3
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.2.2');
+define('FHS_VER', '1.2.3');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1595,8 +1595,9 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-tfield-ptype{flex:1 1 100%}
     .fhs-design-teaser .fhs-tcta{flex:1 1 100%;display:flex;flex-direction:column;align-items:center}
     .fhs-design-teaser .fhs-tcta button{max-width:520px}
-    /* ボタン上のリボンバッジ */
-    .fhs-tbadge{position:relative;top:12px;z-index:1;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1;box-shadow:0 1px 4px rgba(16,24,40,.08)}
+    /* 見出しの上に置くバッジ（無料・秘密厳守など） */
+    .fhs-tbadge-row{margin-bottom:9px;line-height:1}
+    .fhs-tbadge{display:inline-block;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
     .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.7;text-align:center}
     .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px;line-height:1.8}
     /* 自動で拾えている場合は「エラー」ではないので、色を落とす */
@@ -1635,6 +1636,9 @@ function fhs_shortcode($atts = array()) {
         <div class="fhs-tlogo"><img src="<?php echo esc_url($t_logo); ?>" alt=""></div>
 <?php endif; ?>
         <div class="fhs-ttexts">
+<?php if ($t_badge !== ''): ?>
+          <div class="fhs-tbadge-row"><span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span></div>
+<?php endif; ?>
           <div class="fhs-ttitle"><?php echo esc_html($t_title); ?></div>
 <?php if ($t_sub !== ''): ?>
           <div class="fhs-tsub"><?php echo esc_html($t_sub); ?></div>
@@ -1645,9 +1649,6 @@ function fhs_shortcode($atts = array()) {
 <?php $t_reg = fhs_teaser_fields(); $ti = 1;
       foreach ($t_fields as $tk) { echo $render_teaser_field($tk, $t_reg[$tk], $ti++, $uid); } ?>
         <div class="fhs-tcta">
-<?php if ($t_badge !== ''): ?>
-          <span class="fhs-tbadge"><?php echo esc_html($t_badge); ?></span>
-<?php endif; ?>
           <button class="fhs-submit" type="submit"><?php echo esc_html($btn); ?></button>
         </div>
       </div>
