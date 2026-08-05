@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.5.0
+ * Version: 1.6.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.5.0');
+define('FHS_VER', '1.6.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -242,6 +242,7 @@ function fhs_activate() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta($sql);
     fhs_ensure_columns();
+    fhs_ensure_satei_page();
 }
 
 /** 保存先カラムの一覧（スキーマから自動生成）: col => 最大長 */
@@ -276,6 +277,60 @@ function fhs_ensure_columns() {
             $wpdb->query("ALTER TABLE `$t` ADD COLUMN `$c` $def");
         }
     }
+}
+
+/**
+ * 査定ページ（ティザーの遷移先）を用意する。
+ *
+ * ・スラッグ satei の固定ページを「下書き」で作る。いきなり公開すると、
+ *   運営者情報も入れないうちにページが世に出てしまうため。
+ * ・すでに同じスラッグのページがあれば、それを査定ページとして使う（勝手に増やさない）。
+ * ・★一度作ったら二度と自動作成しない。利用者が意図的に消したのに、
+ *   更新のたびに復活すると迷惑なため。
+ */
+function fhs_ensure_satei_page() {
+    if (!function_exists('wp_insert_post')) return;
+
+    // すでに設定済みで、そのページが生きているなら何もしない
+    $id = (int) fhs_opt('satei_page_id', 0);
+    if ($id > 0 && get_post_status($id) !== false) return;
+
+    if (get_option('fhs_page_created')) return;   // 作成済み（消された場合も再作成しない）
+
+    $o = get_option(FHS_OPT, array());
+    if (!is_array($o)) $o = array();
+
+    // 同じスラッグのページが既にあるならそれを採用
+    $existing = get_page_by_path('satei', OBJECT, 'page');
+    if ($existing) {
+        $o['satei_page_id'] = (int) $existing->ID;
+        update_option(FHS_OPT, $o);
+        update_option('fhs_page_created', '1');
+        return;
+    }
+
+    $new_id = wp_insert_post(array(
+        'post_title'   => '無料査定のお申し込み',
+        'post_name'    => 'satei',
+        'post_status'  => 'draft',
+        'post_type'    => 'page',
+        // Gutenbergのショートコードブロックで入れる（クラシックの塊にしない）
+        'post_content' => "<!-- wp:shortcode -->\n[fudosan_honki]\n<!-- /wp:shortcode -->",
+    ));
+    update_option('fhs_page_created', '1');
+    if ($new_id && !is_wp_error($new_id)) {
+        $o['satei_page_id'] = (int) $new_id;
+        update_option(FHS_OPT, $o);
+        update_option('fhs_page_notice', '1');   // 管理画面で1回だけ知らせる
+    }
+}
+
+/** 査定ページのURL（未設定なら空） */
+function fhs_satei_url() {
+    $id = (int) fhs_opt('satei_page_id', 0);
+    if ($id <= 0 || get_post_status($id) === false) return '';
+    $url = get_permalink($id);
+    return $url ? $url : '';
 }
 
 /* 自動更新でバージョンが上がったらテーブル定義を追従（新カラム追加等） */
@@ -322,6 +377,20 @@ function fhs_visible_fields($group, $flds, $req_only = false) {
     }
     return $out;
 }
+
+/* 査定ページを自動作成したことを1回だけ知らせる（下書きなので公開操作が要る） */
+add_action('admin_notices', function () {
+    if (!current_user_can('manage_options')) return;
+    if (!get_option('fhs_page_notice')) return;
+    $id = (int) fhs_opt('satei_page_id', 0);
+    if ($id <= 0) { delete_option('fhs_page_notice'); return; }
+    delete_option('fhs_page_notice');
+    echo '<div class="notice notice-info is-dismissible"><p><strong>【訪問査定申込】査定ページを下書きで作成しました。</strong><br>'
+       . '「無料査定のお申し込み」（スラッグ <code>satei</code>）という固定ページに <code>[fudosan_honki]</code> を入れてあります。'
+       . '内容を確認して公開してください。<br>'
+       . '<a class="button button-primary" href="' . esc_url(get_edit_post_link($id)) . '">ページを編集する</a> '
+       . '<a class="button" href="' . esc_url(admin_url('admin.php?page=fudosan-honki')) . '">設定を開く</a></p></div>';
+});
 
 /* 公開前チェック。お客様に見える信頼性の材料が抜けたまま公開されるのを防ぐ */
 add_action('admin_notices', function () {
@@ -374,6 +443,7 @@ function fhs_sanitize_options($in) {
         // ティザーの見出しまわり（空欄なら表示しない）
         'teaser_badge'     => sanitize_text_field($in['teaser_badge'] ?? ''),
         'teaser_tags'      => sanitize_text_field($in['teaser_tags'] ?? ''),
+        'satei_page_id'    => (int) ($in['satei_page_id'] ?? 0),
         // 自動返信メール
         'mail_subject'     => sanitize_text_field($in['mail_subject'] ?? ''),
         'mail_body'        => sanitize_textarea_field($in['mail_body'] ?? ''),
@@ -709,6 +779,33 @@ function fhs_settings_page() {
                 <tr><th>フォーム冒頭の案内文</th><td>
                     <textarea name="<?php echo FHS_OPT; ?>[lead_text]" rows="3" style="width:100%;max-width:760px"><?php echo esc_textarea(fhs_opt('lead_text')); ?></textarea>
                     <p class="description">フォームの一番上に表示される案内文（任意）。例：「担当者が実際に物件を確認し、根拠のある価格をご提示します。まずはお気軽にお申し込みください。」</p></td></tr>
+                <tr><th>査定ページ</th><td>
+                    <?php
+                    $sid = (int) fhs_opt('satei_page_id', 0);
+                    if (function_exists('wp_dropdown_pages')) {
+                        wp_dropdown_pages(array(
+                            'name'              => FHS_OPT . '[satei_page_id]',
+                            'selected'          => $sid,
+                            'show_option_none'  => '― 選択してください ―',
+                            'option_none_value' => 0,
+                        ));
+                    }
+                    $surl = fhs_satei_url();
+                    if ($sid > 0 && $surl) {
+                        $st = get_post_status($sid);
+                        echo ' <a class="button" href="' . esc_url(get_edit_post_link($sid)) . '">編集</a> ';
+                        echo '<a class="button" href="' . esc_url($surl) . '" target="_blank" rel="noopener">表示</a>';
+                        if ($st !== 'publish') {
+                            echo '<p class="description" style="color:#b32d2e"><strong>このページはまだ下書きです。</strong>内容を確認して公開してください（公開するまでお客様には表示されません）。</p>';
+                        }
+                    }
+                    ?>
+                    <p class="description">
+                        <strong><code>[fudosan_honki]</code> を貼った査定ページ</strong>を選びます。ティザーの「送信」で移動する先です。<br>
+                        ここを設定しておけば、ティザーのショートコードに <code>url="…"</code> を書かなくて済みます。<br>
+                        <span class="description">※ プラグインを有効化したとき、スラッグ <code>satei</code> の固定ページを<strong>下書きで自動作成</strong>しています（同じスラッグのページが既にある場合はそれを使います）。</span>
+                    </p>
+                </td></tr>
                 <tr><th>プライバシーポリシーURL</th><td><input type="url" name="<?php echo FHS_OPT; ?>[privacy_url]" value="<?php echo esc_attr(fhs_opt('privacy_url')); ?>" size="50"></td></tr>
                 <tr><th>利用規約・免責URL</th><td><input type="url" name="<?php echo FHS_OPT; ?>[terms_url]" value="<?php echo esc_attr(fhs_opt('terms_url')); ?>" size="50"></td></tr>
             </table>
@@ -1440,8 +1537,12 @@ function fhs_shortcode($atts = array()) {
     $btn     = $a['button'] !== '' ? sanitize_text_field($a['button'])
                                    : ($teaser ? '無料で査定を依頼する' : '査定を申し込む');
 
-    // ティザーの見た目・引き継ぎ先
-    $t_target = $teaser ? esc_url_raw($a['url']) : '';
+    /* ティザーの遷移先。url を書かなければ、設定で指定した査定ページへ送る
+       （ショートコードにURLを毎回書かなくて済むように）。 */
+    $t_target = '';
+    if ($teaser) {
+        $t_target = $a['url'] !== '' ? esc_url_raw($a['url']) : fhs_satei_url();
+    }
     $t_title  = $a['title']    !== '' ? sanitize_text_field($a['title'])    : '60秒でかんたん入力';
     $t_sub    = $a['subtitle'] !== '' ? sanitize_text_field($a['subtitle']) : '';
     $t_note   = $a['note']     !== '' ? sanitize_text_field($a['note'])     : '';
@@ -1750,7 +1851,9 @@ function fhs_shortcode($atts = array()) {
 <?php if ($teaser): /* ===== 入口フォーム（ティザー）===== */ ?>
 <?php if (!$t_target && current_user_can('manage_options')): ?>
     <div class="fhs-admin-warn"><strong>【この行は管理者にだけ見えています】</strong><br>
-      ティザーには遷移先の指定が必要です。<code>[fudosan_honki design="<?php echo esc_attr($design); ?>" url="/査定ページのURL/"]</code> のように <code>url</code> を追加してください。</div>
+      ティザーの遷移先が決まっていません。次のどちらかで設定してください。<br>
+      ① <a href="<?php echo esc_url(admin_url('admin.php?page=fudosan-honki')); ?>">設定 → 基本設定 → 査定ページ</a> で、<code>[fudosan_honki]</code> を貼ったページを選ぶ（<strong>おすすめ</strong>。以後どのティザーにも効きます）<br>
+      ② このショートコードに <code>url="/satei/"</code> を追加する</div>
 <?php endif; ?>
     <div class="fhs-errors"></div>
     <form class="fhs-form">

@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.5.0\n・ティザーの見出しの横に「メリットのタグ」を並べられるようにしました（例：無料／地場優良企業対応／1社査定）。設定→デザイン→「ティザーの見出し」でカンマ区切りで入力します\n・「無料・秘密厳守」バッジも設定画面から文言を変えられるようにしました\n・★バッジは空欄なら表示しない仕様に変わりました。これまで自動で出ていた「無料・秘密厳守」は、設定画面で入力すると再び表示されます"
+    "changelog": "1.6.0\n・有効化したときに、査定ページ（スラッグ satei）を下書きで自動作成するようにしました。中身は [fudosan_honki] 入りなので、確認して公開するだけで使えます\n・設定→基本設定に「査定ページ」の選択欄を追加しました。ここを設定しておけば、ティザーのショートコードに url=… を書かなくても正しい先へ移動します"
   }
 }
