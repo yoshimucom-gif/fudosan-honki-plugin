@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.0
+ * Version: 1.8.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.0');
+define('FHS_VER', '1.8.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -452,6 +452,7 @@ function fhs_sanitize_options($in) {
         'step_form'        => !empty($in['step_form'])      ? '1' : '0',
         'third_party'      => !empty($in['third_party'])    ? '1' : '0',
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
+        'third_party_url'  => esc_url_raw($in['third_party_url'] ?? ''),
         'logo_url'         => esc_url_raw($in['logo_url'] ?? ''),
         // ティザーの見出しまわり（空欄なら表示しない）
         'teaser_badge'     => sanitize_text_field($in['teaser_badge'] ?? ''),
@@ -915,6 +916,16 @@ function fhs_settings_page() {
                 <tr><th>提供先の説明</th><td>
                     <input type="text" name="<?php echo FHS_OPT; ?>[third_party_name]" value="<?php echo esc_attr(fhs_opt('third_party_name')); ?>" size="60" placeholder="例：当社が提携する不動産会社（お住まいの地域を担当する1〜3社）">
                     <p class="description">上をONにしたときにフォームへ表示されます。<strong>具体的に書くほど信頼されます。</strong>空欄なら「当社が提携する不動産会社」と表示します。</p>
+                </td></tr>
+                <tr><th>提供先を説明したページ</th><td>
+                    <input type="url" name="<?php echo FHS_OPT; ?>[third_party_url]" value="<?php echo esc_attr(fhs_opt('third_party_url')); ?>" size="60" placeholder="https://example.com/partners/">
+                    <p class="description">
+                        提携会社の一覧ページや、提携会社での個人情報の取り扱いを説明したページのURL。<br>
+                        指定すると、上の「提供先の説明」がフォーム上で<strong>リンクになります</strong>。<br>
+                        <strong>提携先も個人情報を受け取る側です。</strong>お客様が「どこに渡り、そこでどう扱われるか」を
+                        確認できるようにしておくと、第三者提供の同意として確かなものになります
+                        （提携先が地域ごとに変わる場合は、一覧ページを1つ用意してそこへリンクするのが実務的です）。
+                    </p>
                 </td></tr>
             </table>
             <h4>フォームに自動表示される内容</h4>
@@ -1659,6 +1670,11 @@ function fhs_shortcode($atts = array()) {
     // 第三者提供の有無で、利用目的と同意文の書き方を変える（個情法27条）
     $tp      = fhs_flag('third_party', false);
     $tp_name = fhs_opt('third_party_name', '当社が提携する不動産会社');
+    $tp_url  = fhs_opt('third_party_url', '');
+    // 提供先の説明。ページがあればリンクにして、渡す相手を確認できるようにする
+    $tp_label = $tp_url
+        ? '<a href="' . esc_url($tp_url) . '" target="_blank" rel="noopener">' . esc_html($tp_name) . '</a>'
+        : esc_html($tp_name);
     $op_name = fhs_opt('operator_name', '当社');
 
     $ptype_options = '<option value="">選択してください</option>';
@@ -1673,7 +1689,7 @@ function fhs_shortcode($atts = array()) {
         $agree_label = $p . 'および' . $t . 'に同意します（必須）';
     }
     if ($tp) {
-        $agree_label = '上記の個人情報の取り扱い（' . esc_html($tp_name) . 'への提供を含む）に同意し、' . $agree_label;
+        $agree_label = '上記の個人情報の取り扱い（' . $tp_label . 'への提供を含む）に同意し、' . $agree_label;
     }
 
     /** 物件種別のタイル選択（1タップで選べるようにする。セレクトより離脱が少ない） */
@@ -2049,8 +2065,8 @@ function fhs_shortcode($atts = array()) {
         <strong>個人情報の取り扱いについて</strong><br>
         ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定の実施とその結果のご連絡、およびそれに関するご案内</strong>のために利用します。<br>
 <?php if ($tp): ?>
-        また、査定・ご提案のため、<strong><?php echo esc_html($tp_name); ?></strong>にご入力内容（お名前・ご連絡先・物件情報）を提供します。
-        ご同意いただけない場合は、送信をお控えください。<br>
+        また、査定・ご提案のため、<strong><?php echo $tp_label; ?></strong>にご入力内容（お名前・ご連絡先・物件情報）を提供します。
+        提供先での取り扱いは、提供先の定めによります。ご同意いただけない場合は、送信をお控えください。<br>
 <?php else: ?>
         ご本人の同意なく第三者に提供することはありません。<br>
 <?php endif; ?>
