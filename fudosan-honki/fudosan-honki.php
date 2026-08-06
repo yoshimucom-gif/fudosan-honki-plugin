@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.3
+ * Version: 1.8.4
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.3');
+define('FHS_VER', '1.8.4');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -164,7 +164,7 @@ function fhs_parse_teaser_fields($raw) {
 /**
  * 属性の間の半角スペースが抜けていても読み取れるようにする。
  *
- * [fudosan_honki design="teaser" url="/satei/"width="640"]
+ * [fudosan_honki design="teaser" url="/○○○/satei/"width="640"]
  *                                          ↑ ここにスペースが無い
  * WordPressは属性を空白区切りで読むため、この塊を属性として認識できず、
  * 「値のない項目」として番号付きで渡してくる。結果 url が空になり、
@@ -1052,11 +1052,11 @@ function fhs_settings_page() {
                 <tr><td><strong>カード</strong></td>
                     <td><code>[fudosan_honki design="card"]</code><br><span class="description">全項目を枠＋影のカードで表示。</span></td></tr>
                 <tr style="background:#fffbe6"><td><strong>ティザー（横長）</strong><br><span class="description">記事の途中・記事末</span></td>
-                    <td><code>[fudosan_honki design="teaser" url="/satei/"]</code><br>
-                        <span class="description"><strong>入力欄が横一列に並ぶ</strong>横長タイプ。2〜3項目だけ入力してもらい、ボタンで <code>url</code> のページへ。入力値は自動で引き継がれます。物件種別は<strong>タイルを1タップ</strong>で選べます。<br>
+                    <td><code>[fudosan_honki design="teaser"]</code><br>
+                        <span class="description"><strong>入力欄が横一列に並ぶ</strong>横長タイプ。2〜3項目だけ入力してもらい、ボタンで<strong>査定ページ</strong>へ。入力値は自動で引き継がれます。物件種別は<strong>タイルを1タップ</strong>で選べます。<br>
                         幅は既定で本文いっぱい。<strong>狭い場所やスマホでは自動的に縦積みに切り替わります。</strong></span></td></tr>
                 <tr style="background:#fffbe6"><td><strong>ティザー（縦）</strong><br><span class="description">サイドバー・記事末</span></td>
-                    <td><code>[fudosan_honki design="teaser-v" url="/satei/"]</code><br>
+                    <td><code>[fudosan_honki design="teaser-v"]</code><br>
                         <span class="description">同じ内容を<strong>常に縦積み</strong>・幅440pxのカードで。サイドバーなど幅の狭い場所向け。</span></td></tr>
                 </tbody>
             </table>
@@ -1135,7 +1135,7 @@ function fhs_settings_page() {
             </table>
             <p class="description" style="background:#fff8e6;border-left:4px solid #dba617;padding:10px 12px;max-width:980px;margin-top:12px">
                 <strong>書き方の注意：属性と属性の間には必ず半角スペースを入れてください。</strong><br>
-                × <code>url="/satei/"width="640"</code>　→　○ <code>url="/satei/" width="640"</code><br>
+                × <code>url="/○○○/satei/"width="640"</code>　→　○ <code>url="/○○○/satei/" width="640"</code><br>
                 <span class="description">※ スペースが抜けていても動くようにしてありますが、その場合はフォームの上に
                 （管理者にだけ見える）お知らせが出ます。</span>
             </p>
@@ -1587,8 +1587,9 @@ add_shortcode('fudosan_honki', 'fhs_shortcode');
  *   [fudosan_honki]                  標準（全項目・幅100%・枠なし）
  *   [fudosan_honki design="compact"] コンパクト（必須のみ・カード・幅440px）
  *   [fudosan_honki design="card"]    全項目をカード（枠＋影）で表示
- *   [fudosan_honki design="teaser"   url="/satei/"] 入口フォーム・横長（記事の途中に置く）
- *   [fudosan_honki design="teaser-v" url="/satei/"] 入口フォーム・縦（サイドバー）
+ *   [fudosan_honki design="teaser"]   入口フォーム・横長（記事の途中に置く）
+ *   [fudosan_honki design="teaser-v"] 入口フォーム・縦（サイドバー）
+ *   ※遷移先は設定の「査定ページ」。url 属性で個別に上書きもできる
  *
  * ティザーは2〜3項目だけ聞いて url のページへ送る。入力値は sessionStorage で引き継ぐ
  * （URLのクエリには載せない＝物件住所が履歴やリファラに残らないようにするため）。
@@ -1961,14 +1962,14 @@ function fhs_shortcode($atts = array()) {
 <?php if ($glued && current_user_can('manage_options')): ?>
     <div class="fhs-admin-warn fhs-admin-note"><strong>【この行は管理者にだけ見えています】ショートコードの属性の間に半角スペースが足りません。</strong><br>
       いまは自動で読み取って表示していますが、<code>"</code> と次の属性の間に<strong>半角スペース</strong>を入れてください。<br>
-      × <code>url="/satei/"width="640"</code>　→　○ <code>url="/satei/" width="640"</code></div>
+      × <code>url="/○○○/satei/"width="640"</code>　→　○ <code>url="/○○○/satei/" width="640"</code></div>
 <?php endif; ?>
 <?php if ($teaser): /* ===== 入口フォーム（ティザー）===== */ ?>
 <?php if (!$t_target && current_user_can('manage_options')): ?>
     <div class="fhs-admin-warn"><strong>【この行は管理者にだけ見えています】</strong><br>
       ティザーの遷移先が決まっていません。次のどちらかで設定してください。<br>
       ① <a href="<?php echo esc_url(admin_url('admin.php?page=fudosan-honki')); ?>">設定 → 基本設定 → 査定ページ</a> で、<code>[fudosan_honki]</code> を貼ったページを選ぶ（<strong>おすすめ</strong>。以後どのティザーにも効きます）<br>
-      ② このショートコードに <code>url="/satei/"</code> を追加する</div>
+      ② このショートコードに <code>url="https://…/○○○/satei/"</code> を追加する</div>
 <?php endif; ?>
     <div class="fhs-errors"></div>
     <form class="fhs-form">
