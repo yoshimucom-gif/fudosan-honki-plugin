@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.3
+ * Version: 1.7.4
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.3');
+define('FHS_VER', '1.7.4');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1881,10 +1881,11 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-tcta button{max-width:520px;margin-top:6px}
     /* 横長は見出しも1行にまとめる（バッジ＋見出しを横並び。狭ければ折り返す） */
     .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px}
-    /* 横長は1行に並べるので、バッジ → 見出し → タグ の順に見せる（HTMLの順はタグが先） */
+    /* 横長でもタグは独立した1行目に置く（バッジ・見出しと同じ行に混ぜると、
+       幅が足りないときに下へ折り返してしまい「一番上」でなくなる） */
+    .fhs-design-teaser .fhs-ttags{order:0;flex:1 1 100%;margin-top:0;margin-bottom:2px}
     .fhs-design-teaser .fhs-tbadge-row{order:1;margin-bottom:0}
     .fhs-design-teaser .fhs-ttitle{order:2}
-    .fhs-design-teaser .fhs-ttags{order:3;margin-top:0}
     .fhs-design-teaser .fhs-tsub{order:4;flex:1 1 100%;margin-top:0}
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
