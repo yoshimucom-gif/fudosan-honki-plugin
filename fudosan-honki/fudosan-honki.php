@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.4
+ * Version: 1.8.5
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.4');
+define('FHS_VER', '1.8.5');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1898,6 +1898,14 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-ttags,.fhs-design-teaser-v .fhs-ttags{flex:1 1 100%;margin-top:0;margin-bottom:2px}
     .fhs-design-teaser .fhs-tbadge-row,.fhs-design-teaser-v .fhs-tbadge-row{margin-bottom:0}
     .fhs-design-teaser .fhs-tsub,.fhs-design-teaser-v .fhs-tsub{flex:1 1 100%;margin-top:0}
+    /* 横長は横幅が余るので、見出しを左・タグを右に振り分けて1行に収める。
+       （HTMLの順はタグが先なので order で位置を入れ替える） */
+    .fhs-design-teaser .fhs-thead{text-align:left}
+    .fhs-design-teaser .fhs-ttexts{justify-content:flex-start}
+    .fhs-design-teaser .fhs-tbadge-row{order:1}
+    .fhs-design-teaser .fhs-ttitle{order:2}
+    .fhs-design-teaser .fhs-ttags{order:3;flex:0 1 auto;margin-left:auto;margin-bottom:0}
+    .fhs-design-teaser .fhs-tsub{order:4}
     .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
     .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}
     .fhs-tsub{font-size:14px;color:var(--fhs-muted);margin-top:5px;line-height:1.6}
@@ -1944,6 +1952,10 @@ function fhs_shortcode($atts = array()) {
     .fhs-admin-warn.fhs-admin-note{background:#fff8e6;border-color:#f0e0a8;color:#6b5a12}
     .fhs-admin-warn code{background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;font-size:13px}
     @media(max-width:560px){
+      /* 幅が無いときは横に振り分けず、中央に積む */
+      .fhs-design-teaser .fhs-thead{text-align:center}
+      .fhs-design-teaser .fhs-ttexts{justify-content:center}
+      .fhs-design-teaser .fhs-ttags{order:0;flex:1 1 100%;margin-left:0;margin-bottom:2px;justify-content:center}
       .fhs-tiles{grid-template-columns:1fr;gap:8px}
       .fhs-wrap .fhs-tile{min-height:0;padding:13px 8px}
       .fhs-ttitle{font-size:19px}
