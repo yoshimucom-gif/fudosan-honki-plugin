@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.4
+ * Version: 1.7.5
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.4');
+define('FHS_VER', '1.7.5');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1846,9 +1846,13 @@ function fhs_shortcode($atts = array()) {
        両方に効いてしまい、片方の幅が意図せず変わる。 */
     .fhs-design-teaser,.fhs-design-teaser-v{margin-left:auto;margin-right:auto}
     .fhs-design-teaser .fhs-hint,.fhs-design-teaser-v .fhs-hint{display:none}
-    /* 縦：HTMLの順（タグ→バッジ→見出し）がそのまま見た目の順になる */
-    .fhs-design-teaser-v .fhs-ttags{margin-top:0;margin-bottom:11px}
-    .fhs-design-teaser-v .fhs-tbadge-row{margin-bottom:7px}
+    /* 見出しまわりは横長・縦で同じ組み方にする。
+       1行目＝メリットのタグ、2行目＝バッジ＋アイコン＋見出し。
+       HTMLの順（タグ→バッジ→見出し→小見出し）がそのまま表示順になるので order は使わない。 */
+    .fhs-design-teaser .fhs-ttexts,.fhs-design-teaser-v .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
+    .fhs-design-teaser .fhs-ttags,.fhs-design-teaser-v .fhs-ttags{flex:1 1 100%;margin-top:0;margin-bottom:2px}
+    .fhs-design-teaser .fhs-tbadge-row,.fhs-design-teaser-v .fhs-tbadge-row{margin-bottom:0}
+    .fhs-design-teaser .fhs-tsub,.fhs-design-teaser-v .fhs-tsub{flex:1 1 100%;margin-top:0}
     .fhs-thead{text-align:center;padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--fhs-line)}
     .fhs-ttitle{font-size:22px;font-weight:800;color:var(--fhs-title);line-height:1.4;letter-spacing:.01em}
     .fhs-tsub{font-size:14px;color:var(--fhs-muted);margin-top:5px;line-height:1.6}
@@ -1881,18 +1885,12 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-teaser .fhs-tcta button{max-width:520px;margin-top:6px}
     /* 横長は見出しも1行にまとめる（バッジ＋見出しを横並び。狭ければ折り返す） */
     .fhs-design-teaser .fhs-ttexts{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px}
-    /* 横長でもタグは独立した1行目に置く（バッジ・見出しと同じ行に混ぜると、
-       幅が足りないときに下へ折り返してしまい「一番上」でなくなる） */
-    .fhs-design-teaser .fhs-ttags{order:0;flex:1 1 100%;margin-top:0;margin-bottom:2px}
-    .fhs-design-teaser .fhs-tbadge-row{order:1;margin-bottom:0}
-    .fhs-design-teaser .fhs-ttitle{order:2}
-    .fhs-design-teaser .fhs-tsub{order:4;flex:1 1 100%;margin-top:0}
     /* 見出しの上に置くバッジ（無料・秘密厳守など） */
     .fhs-tbadge-row{margin-bottom:9px;line-height:1}
     /* 見出しの横に並べるメリットのタグ */
     .fhs-ttags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:9px}
     .fhs-ttag{font-size:12px;font-weight:700;color:var(--fhs-brand);background:rgba(var(--fhs-brand-rgb),.09);border:1px solid rgba(var(--fhs-brand-rgb),.28);border-radius:999px;padding:5px 11px;line-height:1.3;white-space:nowrap}
-    .fhs-tbadge{display:inline-block;background:#fff;border:1px solid var(--fhs-badge-bg);color:var(--fhs-badge-bg);font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
+    .fhs-tbadge{display:inline-block;background:var(--fhs-badge-bg);border:1px solid var(--fhs-badge-bg);color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:5px 14px;line-height:1}
     .fhs-tnote{color:var(--fhs-muted);font-size:12px;margin-top:12px;line-height:1.8;text-align:center;text-wrap:pretty}
     .fhs-tnote span{display:block}
     .fhs-admin-warn{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:12px 14px;border-radius:9px;font-size:14px;margin-bottom:12px;line-height:1.8}
