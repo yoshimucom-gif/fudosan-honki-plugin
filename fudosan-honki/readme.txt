@@ -37,8 +37,8 @@
    属性: button="ボタン文言"
 
    ■ ティザー（記事に置く入口フォーム）
-   [fudosan_honki design="teaser"   url="/satei/"]  横長。入力欄が横一列に並ぶ
-   [fudosan_honki design="teaser-v" url="/satei/"]  縦。常に縦積み（幅440px）
+   [fudosan_honki design="teaser"]    横長。入力欄が横一列に並ぶ
+   [fudosan_honki design="teaser-v"]  縦。常に縦積み（幅440px）
 
    横長は「物件種別」「物件の住所」などを横一列に並べます。幅が足りなく
    なると自動的に縦積みへ切り替わるので、スマホでもそのまま使えます。
@@ -49,8 +49,11 @@
    物件種別はタイルを1タップで選べます。
 
    属性:
-     url      遷移先。省略すると 設定→基本設定→「査定ページ」で選んだ
-              ページへ送ります（ふだんは省略でOK）
+     url      遷移先。ふだんは書かなくて構いません（設定→基本設定→
+              「査定ページ」で選んだページへ送ります）。
+              そのフォームだけ別のページへ送りたいときに指定します
+              例: url="https://fudosan-uru.jp/○○○/satei/"
+              （同じサイト内なら url="/○○○/satei/" でも可）
      width    横幅。省略時は 横長＝本文の幅いっぱい / 縦＝440px（中央寄せ）
               width="820" のように数字だけ書けばpx、width="100%" も可
               ※狭くすると入力欄は自動で縦積みになります（およそ560px以下）
@@ -76,29 +79,29 @@
      button   ボタンの文言
 
    ■ そのままコピーして使える例
-   （/satei/ の部分だけ、ご自身の査定ページのURLに置き換えてください）
+   （遷移先は 設定→基本設定→「査定ページ」で決まるので、URLは不要です）
 
    記事の途中に置く（横長・入力欄が横一列）
-     [fudosan_honki design="teaser" url="/satei/"]
+     [fudosan_honki design="teaser"]
 
    幅を抑える（本文が広いとき）
-     [fudosan_honki design="teaser" url="/satei/" width="820"]
+     [fudosan_honki design="teaser" width="820"]
 
    サイドバーに置く（縦積み・幅440px）
-     [fudosan_honki design="teaser-v" url="/satei/"]
+     [fudosan_honki design="teaser-v"]
 
    見出しを地域に合わせる（エリア記事向け）
-     [fudosan_honki design="teaser" url="/satei/" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]
+     [fudosan_honki design="teaser" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]
 
    売却時期も聞く（横一列に3項目）
-     [fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]
+     [fudosan_honki design="teaser" fields="ptype,address,timing"]
 
    査定ページ本体（遷移先のページに貼る）
      [fudosan_honki]
 
    ★書き方の注意: 属性と属性の間には必ず半角スペースを入れてください。
-     × url="/satei/"width="640"
-     ○ url="/satei/" width="640"
+     × url="/○○○/satei/"width="640"
+     ○ url="/○○○/satei/" width="640"
      ※ 抜けていても動くようにしてありますが、管理者にだけお知らせが出ます。
 
    横長と縦の違い: 横長は入力欄が横一列に並びます。縦は常に縦積みです。

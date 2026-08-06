@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.1
+ * Version: 1.8.2
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.1');
+define('FHS_VER', '1.8.2');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1061,7 +1061,10 @@ function fhs_settings_page() {
             <table class="widefat striped" style="max-width:900px">
                 <thead><tr><th style="width:110px">属性</th><th>意味</th></tr></thead>
                 <tbody>
-                <tr><td><code>url</code></td><td><strong>必須。</strong>ボタンの遷移先＝<code>[fudosan_honki]</code> を貼った査定ページのURL。例：<code>url="/satei/"</code></td></tr>
+                <tr><td><code>url</code></td><td>ボタンの遷移先。<strong>ふだんは書かなくて構いません</strong>（設定→基本設定→「査定ページ」で選んだページへ送ります）。<br>
+                    そのフォームだけ別のページへ送りたいときに指定します。<br>
+                    <strong>例：</strong><code>url="https://fudosan-uru.jp/○○○/satei/"</code>（<code>○○○</code> はエリアのスラッグなど）<br>
+                    <span class="description">同じサイト内なら <code>url="/○○○/satei/"</code> のように <code>/</code> で始まる書き方でも構いません。</span></td></tr>
                 <tr><td><code>fields</code></td><td>聞く項目と順番。<code>ptype</code>（物件種別）/ <code>address</code>（物件の住所）/ <code>survey</code>（査定方法）/ <code>purpose</code>（ご事情）/ <code>timing</code>（希望時期）から選ぶ。省略時は <code>ptype,address</code><br>
                     <span class="description">※ <strong>お名前・電話番号・メールはティザーには置けません。</strong>個人情報は、利用目的の明示と同意チェックがある査定ページで受け取る決まりにしているためです。</span></td></tr>
                 <tr><td><code>width</code></td><td>横幅。<strong>省略時は横長＝本文の幅いっぱい、縦＝440px</strong>（どちらも中央寄せ）。<code>width="820"</code> のように数字だけ書けばpx、<code>width="100%"</code> も指定できます。<br>
@@ -1080,35 +1083,37 @@ function fhs_settings_page() {
             </table>
             <h3>そのままコピーして使えます</h3>
             <p class="description">
-                <strong><code>/satei/</code> の部分だけ、ご自身の査定ページのURLに置き換えてください。</strong>
-                （<code>[fudosan_honki]</code> を貼った固定ページのURLです）
+                <strong>そのまま貼るだけで使えます。</strong>遷移先は
+                <a href="<?php echo esc_url(admin_url('admin.php?page=fudosan-honki')); ?>">設定 → 基本設定 → 査定ページ</a>
+                で選んだページになるので、ショートコードにURLを書く必要はありません。<br>
+                <span class="description">別のページへ送りたいときだけ <code>url="…"</code> を足してください（下の属性表を参照）。</span>
             </p>
             <table class="widefat striped fhs-recipes" style="max-width:980px">
                 <thead><tr><th style="width:190px">やりたいこと</th><th>ショートコード</th><th style="width:90px"></th></tr></thead>
                 <tbody>
                 <tr>
                     <td><strong>記事の途中に置く</strong><br><span class="description">いちばん基本。入力欄が横一列</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
                     <td><strong>幅を抑える</strong><br><span class="description">本文が広いときに</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" width="820"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" width="820"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
                     <td><strong>サイドバーに置く</strong><br><span class="description">縦積み・幅440px</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser-v" url="/satei/"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser-v"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
                     <td><strong>見出しを地域に合わせる</strong><br><span class="description">エリア記事向け</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" title="岡山市の売却価格を調べる" subtitle="ご入力は60秒。しつこい営業はいたしません"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
                     <td><strong>売却時期も聞く</strong><br><span class="description">横一列に3項目</span></td>
-                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" url="/satei/" fields="ptype,address,timing"]</code></td>
+                    <td><code class="fhs-copy-src">[fudosan_honki design="teaser" fields="ptype,address,timing"]</code></td>
                     <td><button type="button" class="button fhs-copy">コピー</button></td>
                 </tr>
                 <tr>
@@ -1792,8 +1797,13 @@ function fhs_shortcode($atts = array()) {
     .fhs-lead{background:#f6f8fa;border:1px solid var(--fhs-line);border-radius:10px;padding:14px 16px;font-size:16px;color:#374151;margin-bottom:20px;white-space:pre-line}
     .fhs-section{display:flex;align-items:center;font-weight:800;font-size:21px;color:var(--fhs-ink);margin:34px 0 10px;padding-left:12px;border-left:5px solid var(--fhs-brand);line-height:1.45;letter-spacing:.01em}
     .fhs-form > .fhs-section:first-child{margin-top:0}
-    .fhs-wrap input,.fhs-wrap select,.fhs-wrap textarea{width:100%;padding:14px 15px;border:1px solid #cbd5e1;border-radius:9px;font-size:18px;background:#fff;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
-    .fhs-wrap input:focus,.fhs-wrap select:focus,.fhs-wrap textarea:focus{outline:none;border-color:var(--fhs-brand);box-shadow:0 0 0 3px rgba(var(--fhs-brand-rgb),.15)}
+    /* ★チェックボックス・ラジオは対象外にする。padding や角丸が乗ると、
+       テーマが自前で描いている環境で丸く潰れるなど表示が壊れる。 */
+    .fhs-wrap input:not([type=checkbox]):not([type=radio]),.fhs-wrap select,.fhs-wrap textarea{width:100%;padding:14px 15px;border:1px solid #cbd5e1;border-radius:9px;font-size:18px;background:#fff;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
+    .fhs-wrap input:not([type=checkbox]):not([type=radio]):focus,.fhs-wrap select:focus,.fhs-wrap textarea:focus{outline:none;border-color:var(--fhs-brand);box-shadow:0 0 0 3px rgba(var(--fhs-brand-rgb),.15)}
+    /* テーマ側の appearance:none などを打ち消して、ブラウザ標準の四角いチェックに戻す */
+    .fhs-wrap input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;width:auto;min-width:0;height:auto;padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none}
+    .fhs-wrap input[type=radio]{-webkit-appearance:radio;appearance:auto;width:auto;min-width:0;height:auto;padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none}
     /* 項目は2カラムでコンパクトに（textarea・チェックは全幅） */
     .fhs-group{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start}
     .fhs-field{min-width:0}
@@ -1802,7 +1812,8 @@ function fhs_shortcode($atts = array()) {
     @media(max-width:560px){.fhs-group{grid-template-columns:1fr}}
     .fhs-hint{color:var(--fhs-muted);font-size:14px;margin-top:5px;line-height:1.7}
     .fhs-check{display:flex;gap:9px;align-items:flex-start;margin-top:14px}
-    .fhs-check input{width:auto;margin-top:6px;transform:scale(1.2)}.fhs-check label{margin:0;font-weight:400;font-size:16px}
+    .fhs-wrap .fhs-check input[type=checkbox]{margin-top:5px;transform:scale(1.25);flex:0 0 auto}
+    .fhs-check label{margin:0;font-weight:400;font-size:16px}
     .fhs-wrap button{margin-top:24px;width:100%;background:var(--fhs-btn-bg);color:var(--fhs-btn-text);border:0;border-radius:10px;padding:18px;font-size:20px;font-weight:700;cursor:pointer}
     /* ステップ表示。★.fhs-step はティザーの「STEP 1」バッジが使っているので別名にすること */
     .fhs-wrap .fhs-formstep{display:block}
@@ -1891,7 +1902,7 @@ function fhs_shortcode($atts = array()) {
        画面幅いっぱいに広がって横スクロールが出る。 */
     /* タイルは3つ横並びが基本。入らなくなったら自動で2つ・1つに落ちる */
     .fhs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px}
-    .fhs-wrap .fhs-tile-input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0;pointer-events:none}
+    .fhs-wrap .fhs-tile-input,.fhs-wrap input[type=radio].fhs-tile-input{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0;pointer-events:none;appearance:none;-webkit-appearance:none}
     .fhs-wrap .fhs-tile{display:flex;align-items:center;justify-content:center;text-align:center;background:#fff;border:2px solid #cbd5e1;border-radius:10px;padding:15px 8px;font-weight:700;font-size:16px;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,color .15s;margin:0;line-height:1.3;min-height:56px}
     .fhs-wrap .fhs-tile:hover{border-color:rgba(var(--fhs-brand-rgb),.6)}
     .fhs-wrap .fhs-tile-input:checked + .fhs-tile{border-color:var(--fhs-brand);background:rgba(var(--fhs-brand-rgb),.08);color:var(--fhs-brand)}
@@ -2103,13 +2114,14 @@ function fhs_shortcode($atts = array()) {
       担当者がお伝えする価格は<strong>参考価格の情報提供</strong>であり、不動産鑑定士による<strong>鑑定評価ではありません</strong>。実際の売却価格を保証するものではありません。<strong>当社は宅地建物取引業者ではなく、売買の媒介・代理は行いません。</strong>
     </div>
 <?php
-    /* 提供元の明示。お客様が「どこの誰に自宅と連絡先を渡すのか」を判断する材料。設定済みの項目だけを出す。 */
+    /* 査定を担当する会社の明示。お客様が「どこの誰に自宅と連絡先を渡すのか」を
+       判断する材料になる。設定済みの項目だけを出す。 */
     $op_disp = fhs_opt('operator_name', '');
     $op_addr = fhs_opt('operator_address', ''); $op_tel = fhs_opt('operator_contact', '');
     if ($op_disp || $op_addr || $op_tel):
 ?>
     <div class="fhs-operator">
-      <div class="fhs-operator-t">このサービスの提供元</div>
+      <div class="fhs-operator-t">査定担当会社</div>
 <?php if ($op_disp): ?>      <div><span>運営</span><?php echo esc_html($op_disp); ?></div>
 <?php endif; if ($op_addr): ?>      <div><span>所在地</span><?php echo esc_html($op_addr); ?></div>
 <?php endif; if ($op_tel): ?>      <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>

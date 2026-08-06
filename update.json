@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.8.1\n・設定→個人情報に「提供先を説明したページ」のURL欄を追加しました。指定すると、フォーム上の提供先の説明がリンクになり、お客様が「どこに渡るか」を確認できます（提携先も個人情報を受け取る側のため）"
+    "changelog": "1.8.2\n・チェックボックスの表示がテーマによって丸く潰れることがある問題を修正しました\n・「このサービスの提供元」を「査定担当会社」に変えました\n・ショートコードの例からURLを外しました。遷移先は設定→基本設定→「査定ページ」で決まるため、URLを書く必要はありません。別ページへ送りたいときの書き方は「使い方」タブに例を載せています"
   }
 }
