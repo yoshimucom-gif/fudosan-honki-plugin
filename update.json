@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.7.5\n・バッジ（無料など）を、背景に色を敷いて白文字にしました。色は設定→デザイン→「必須」バッジの色で変えられます\n・バッジをアイコン・見出しと同じ行の左側に配置しました。縦・横どちらのティザーも「1行目＝メリットのタグ／2行目＝バッジ＋アイコン＋見出し」で揃います"
+    "changelog": "1.7.6\n・メリットのタグを四角（角丸5px）・枠線なしの塗りだけにしました。バッジの丸い形と分かれて、並んでもくどく見えません"
   }
 }
