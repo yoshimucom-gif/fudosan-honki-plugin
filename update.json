@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.8.5",
+  "version": "1.8.6",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.8.5\n・横長ティザーの見出し行を、左に見出し・右にメリットのタグと振り分けて1行にまとめました。余っていた横幅を使い切り、見出し部分の高さが約半分になります（スマホでは従来どおり中央に積みます）"
+    "changelog": "1.8.6\n・申し込みフォームの下にあった免責文を削除しました。フォームでは価格を一切示しておらず、申し込みをためらわせるだけのためです。免責は受付完了メールと完了画面（送信後）に引き続き表示されます"
   }
 }
