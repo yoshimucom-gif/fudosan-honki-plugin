@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.8.2\n・チェックボックスの表示がテーマによって丸く潰れることがある問題を修正しました\n・「このサービスの提供元」を「査定担当会社」に変えました\n・ショートコードの例からURLを外しました。遷移先は設定→基本設定→「査定ページ」で決まるため、URLを書く必要はありません。別ページへ送りたいときの書き方は「使い方」タブに例を載せています"
+    "changelog": "1.8.3\n・査定担当会社の欄から、お問い合わせ先（電話番号）を既定で非表示にしました。フォームに電話番号があると、送信せず電話で済ませる方が出て申し込み数が減るためです。受付完了メールには従来どおり記載されます\n・表示したい場合は 設定→基本設定→問い合わせ先の「フォームにも表示する」をオンにしてください"
   }
 }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.2
+ * Version: 1.8.3
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.2');
+define('FHS_VER', '1.8.3');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -447,6 +447,8 @@ function fhs_sanitize_options($in) {
         'terms_url'        => esc_url_raw($in['terms_url'] ?? ''),
         // チェックボックス（未送信＝OFF。'' ではなく明示的に '0' を入れて区別する）
         'notify_on'        => !empty($in['notify_on'])      ? '1' : '0',
+        // フォーム上に問い合わせ先（電話番号）を出すか。既定はOFF
+        'show_contact'     => !empty($in['show_contact'])    ? '1' : '0',
         'show_marketing'   => !empty($in['show_marketing']) ? '1' : '0',
         'show_note'        => !empty($in['show_note'])      ? '1' : '0',
         'step_form'        => !empty($in['step_form'])      ? '1' : '0',
@@ -796,7 +798,15 @@ function fhs_settings_page() {
                         <strong>都道府県は入れていません。</strong>市区町村単位で扱うサービスのため、県から書かせる必要がないためです。
                     </p>
                 </td></tr>
-                <tr><th>問い合わせ先</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_contact]" value="<?php echo esc_attr(fhs_opt('operator_contact')); ?>" size="40" placeholder="例：086-000-0000 / info@example.com"></td></tr>
+                <tr><th>問い合わせ先</th><td>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[operator_contact]" value="<?php echo esc_attr(fhs_opt('operator_contact')); ?>" size="40" placeholder="例：086-000-0000 / info@example.com"><br>
+                    <label style="display:inline-block;margin-top:8px"><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_contact]" value="1" <?php checked(fhs_flag('show_contact', false)); ?>> この連絡先を<strong>フォームにも表示する</strong></label>
+                    <p class="description">
+                        <strong>ふだんはオフのままを推奨します。</strong>申し込みフォームに電話番号があると、
+                        フォームを送らずに電話で済ませる方が出て、<strong>申し込み数が減ります</strong>（どこから来たお客様かも分からなくなります）。<br>
+                        オフでも、<strong>受付完了メールには必ず記載されます</strong>ので、お客様が連絡できなくなることはありません。
+                    </p>
+                </td></tr>
                 <tr><th>送信元メール</th><td><input type="email" name="<?php echo FHS_OPT; ?>[from_email]" value="<?php echo esc_attr(fhs_opt('from_email')); ?>" size="40" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                     <p class="description">お客様への受付完了メールの差出人。空欄ならWordPressの既定の差出人になります。到達率のため WP Mail SMTP 等で SPF/DKIM を設定してください。</p></td></tr>
                 <tr><th>通知先メール（担当者）</th><td>
@@ -1836,7 +1846,7 @@ function fhs_shortcode($atts = array()) {
     .fhs-privacy-note{background:#f6f8fa;border:1px solid var(--fhs-line);border-radius:9px;padding:13px 15px;font-size:14px;color:#4b5563;line-height:1.75;margin-top:16px}
     .fhs-operator{margin-top:18px;padding-top:16px;border-top:1px solid var(--fhs-line);font-size:14px;color:#4b5563;line-height:1.9}
     .fhs-operator-t{font-weight:700;color:var(--fhs-ink);margin-bottom:4px;font-size:15px}
-    .fhs-operator span{display:inline-block;min-width:6.5em;color:var(--fhs-muted)}
+    .fhs-operator span{display:inline-block;min-width:6.5em;padding-right:10px;color:var(--fhs-muted)}
     .fhs-err{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:10px 12px;border-radius:9px;margin-bottom:10px;font-size:16px}
     .fhs-spec{width:100%;border-collapse:collapse;margin:16px 0;font-size:17px}
     .fhs-spec th,.fhs-spec td{border-bottom:1px solid var(--fhs-line);padding:12px 10px;text-align:left}
@@ -2081,7 +2091,10 @@ function fhs_shortcode($atts = array()) {
 <?php else: ?>
         ご本人の同意なく第三者に提供することはありません。<br>
 <?php endif; ?>
-        削除をご希望の場合は、下記の連絡先までお申し付けください。
+        削除をご希望の場合は、<?php echo (fhs_opt('operator_contact', '') !== '' && fhs_flag('show_contact', false))
+            ? '下記の連絡先'
+            : ($privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>に記載の窓口'
+                        : '当社の窓口'); ?>までお申し付けください。
       </div>
 
       <div class="fhs-check">
@@ -2118,13 +2131,14 @@ function fhs_shortcode($atts = array()) {
        判断する材料になる。設定済みの項目だけを出す。 */
     $op_disp = fhs_opt('operator_name', '');
     $op_addr = fhs_opt('operator_address', ''); $op_tel = fhs_opt('operator_contact', '');
-    if ($op_disp || $op_addr || $op_tel):
+    $op_tel_shown = ($op_tel !== '' && fhs_flag('show_contact', false));
+    if ($op_disp || $op_addr || $op_tel_shown):
 ?>
     <div class="fhs-operator">
       <div class="fhs-operator-t">査定担当会社</div>
 <?php if ($op_disp): ?>      <div><span>運営</span><?php echo esc_html($op_disp); ?></div>
 <?php endif; if ($op_addr): ?>      <div><span>所在地</span><?php echo esc_html($op_addr); ?></div>
-<?php endif; if ($op_tel): ?>      <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>
+<?php endif; if ($op_tel && fhs_flag('show_contact', false)): ?>      <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>
 <?php endif; ?>
     </div>
 <?php endif; ?>
