@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.7.6
+ * Version: 1.8.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.7.6');
+define('FHS_VER', '1.8.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -997,10 +997,12 @@ function fhs_settings_page() {
                     <p class="description">入力済みチェック（✓）、次の入力欄のハイライト、物件種別で選んだタイル、メリットのタグに使われます。</p>
                 </td></tr>
                 <tr><th>ボタンの背景色</th><td>
-                    <?php echo fhs_color_field('color_btn_bg', fhs_opt('color_brand', '#1f6feb')); ?>
+                    <?php echo fhs_color_field('color_btn_bg', '#e65100'); ?>
                     <p class="description">
-                        送信ボタン・「次へ進む」ボタンの背景色。<strong>空欄ならブランドカラーと同じ</strong>になります。<br>
-                        ボタンだけ目立つ色（オレンジなど）にすると押されやすくなります。
+                        送信ボタン・「次へ進む」ボタンの背景色。<strong>空欄なら <code>#e65100</code>（オレンジ）</strong>です。<br>
+                        不動産の一括査定サイトは軒並み<strong>暖色（オレンジ〜赤）</strong>を使っています。
+                        色そのものより「<strong>まわりから浮いているか</strong>」が効くので、紺や白が基調のページでは暖色が有利です。<br>
+                        ブランドカラーに合わせたい場合は、上のブランドカラーと同じ値を入れてください。
                     </p>
                 </td></tr>
                 <tr><th>ボタンの文字色</th><td><?php echo fhs_color_field('color_btn_text', '#ffffff'); ?></td></tr>
@@ -1618,7 +1620,12 @@ function fhs_shortcode($atts = array()) {
 
     $c_brand    = fhs_opt('color_brand', '#1f6feb');
     $c_btn_text = fhs_opt('color_btn_text', '#ffffff');
-    $c_btn_bg   = fhs_opt('color_btn_bg', '') ?: $c_brand;   // 未指定ならブランドカラー
+    /* 申し込みボタンの色。未指定なら暖色（オレンジ）。
+       一括査定サイトはどこも暖色（イエウールのCTAは #b02d2a の赤）で、
+       紺・白が基調のフォームでは暖色が最も浮く。
+       #e65100 は白文字とのコントラストが 3.79:1 あり、大きな太字なら読みやすさの基準を満たす
+       （#ff9900 のような明るいオレンジは 2.14:1 しかなく、白文字が沈む）。 */
+    $c_btn_bg   = fhs_opt('color_btn_bg', '') ?: '#e65100';
     $c_title    = fhs_opt('color_title', '#1f6feb');
     $c_badge    = fhs_opt('color_badge', '#ff5a36');
     $c_brand_rgb = fhs_hex_to_rgb($c_brand);

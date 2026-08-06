@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.7.6",
+  "version": "1.8.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.7.6\n・メリットのタグを四角（角丸5px）・枠線なしの塗りだけにしました。バッジの丸い形と分かれて、並んでもくどく見えません"
+    "changelog": "1.8.0\n・申し込みボタンの色を、押されやすい暖色（オレンジ #e65100）に変えました。不動産の一括査定サイトは軒並み暖色を使っており、紺・白が基調のページで最も目立つためです\n・設定→デザイン→「ボタンの背景色」で自由に変えられます。ブランドカラーに合わせたい場合はブランドカラーと同じ値を入れてください"
   }
 }
