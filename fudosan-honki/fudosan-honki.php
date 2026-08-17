@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.8.6
+ * Version: 1.9.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.8.6');
+define('FHS_VER', '1.9.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -456,6 +456,7 @@ function fhs_sanitize_options($in) {
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
         'third_party_url'  => esc_url_raw($in['third_party_url'] ?? ''),
         'logo_url'         => esc_url_raw($in['logo_url'] ?? ''),
+        'company_image'    => esc_url_raw($in['company_image'] ?? ''),
         // ティザーの見出しまわり（空欄なら表示しない）
         'teaser_badge'     => sanitize_text_field($in['teaser_badge'] ?? ''),
         'teaser_tags'      => sanitize_text_field($in['teaser_tags'] ?? ''),
@@ -745,6 +746,26 @@ function fhs_color_field($key, $default) {
 <?php return ob_get_clean();
 }
 
+/**
+ * 画像を選ぶ欄（プレビュー＋メディアライブラリ＋消す）。
+ * 複数置けるようにIDは使わずクラスで組む。
+ * $round を true にすると、プレビューを丸で表示する（実際の表示に合わせるため）。
+ */
+function fhs_image_field($key, $round = false) {
+    $url = fhs_opt($key);
+    ob_start(); ?>
+    <div class="fhs-logofield">
+      <span class="fhs-logo-preview<?php echo $url ? '' : ' is-empty'; ?><?php echo $round ? ' is-round' : ''; ?>">
+        <?php if ($url): ?><img src="<?php echo esc_url($url); ?>" alt=""><?php else: ?>未設定<?php endif; ?>
+      </span>
+      <input type="url" class="fhs-logo-url" name="<?php echo FHS_OPT; ?>[<?php echo esc_attr($key); ?>]"
+             value="<?php echo esc_attr($url); ?>" size="52" placeholder="https://example.com/logo.png">
+      <button type="button" class="button fhs-logo-pick">メディアから選ぶ</button>
+      <button type="button" class="button fhs-logo-clear">消す</button>
+    </div>
+<?php return ob_get_clean();
+}
+
 function fhs_settings_page() {
     ?>
     <style>
@@ -756,6 +777,8 @@ function fhs_settings_page() {
       .fhs-logo-preview{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid #dcdcde;border-radius:6px;background:#fff;overflow:hidden;flex:0 0 auto}
       .fhs-logo-preview img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
       .fhs-logo-preview.is-empty{color:#8c8f94;font-size:11px;background:#f6f7f7}
+      .fhs-logo-preview.is-round{border-radius:50%}
+      .fhs-logo-preview.is-round img{width:100%;height:100%;object-fit:cover}
       .fhs-recipes td{vertical-align:middle}
       .fhs-recipes .fhs-copy-src{display:block;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;padding:8px 10px;font-size:12.5px;line-height:1.6;word-break:break-all;user-select:all}
       .fhs-recipes .fhs-copy{white-space:nowrap}
@@ -790,6 +813,14 @@ function fhs_settings_page() {
                 <tr><th>運営者名（会社名）</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_name]" value="<?php echo esc_attr(fhs_opt('operator_name')); ?>" size="40" placeholder="例：ミカタ株式会社">
                     <p class="description">フォームとメールに表示されます。<strong>お客様が「どこの会社に自宅と連絡先を渡すのか」を判断する材料</strong>なので、必ずご記入ください。</p></td></tr>
                 <tr><th>所在地</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_address]" value="<?php echo esc_attr(fhs_opt('operator_address')); ?>" size="50" placeholder="例：岡山県岡山市北区○○1-2-3"></td></tr>
+                <tr><th>会社の画像</th><td>
+                    <?php echo fhs_image_field('company_image', true); ?>
+                    <p class="description">
+                        フォーム下部の「査定担当会社」の欄で、<strong>会社名・所在地の左に丸く表示されます</strong>。<br>
+                        会社ロゴ、店舗の外観、担当者の顔写真など。<strong>正方形の画像</strong>を用意してください
+                        （正方形でなくても中央を正方形に切り出して丸くします）。空欄なら表示しません。
+                    </p>
+                </td></tr>
                 <tr><th>住所欄の入力例</th><td>
                     <input type="text" name="<?php echo FHS_OPT; ?>[address_example]" value="<?php echo esc_attr(fhs_opt('address_example')); ?>" size="50" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>">
                     <p class="description">
@@ -993,15 +1024,7 @@ function fhs_settings_page() {
                     </p>
                 </td></tr>
                 <tr><th>アイコン画像</th><td>
-                    <?php $logo = fhs_opt('logo_url'); ?>
-                    <div class="fhs-logofield">
-                      <span class="fhs-logo-preview<?php echo $logo ? '' : ' is-empty'; ?>">
-                        <?php if ($logo): ?><img src="<?php echo esc_url($logo); ?>" alt=""><?php else: ?>未設定<?php endif; ?>
-                      </span>
-                      <input type="url" id="fhs-logo-url" name="<?php echo FHS_OPT; ?>[logo_url]" value="<?php echo esc_attr($logo); ?>" size="52" placeholder="https://example.com/logo.png">
-                      <button type="button" class="button" id="fhs-logo-pick">メディアから選ぶ</button>
-                      <button type="button" class="button" id="fhs-logo-clear">消す</button>
-                    </div>
+                    <?php echo fhs_image_field('logo_url'); ?>
                     <p class="description">
                         会社ロゴやファビコンなど。<strong>見出しの左に小さく表示されます</strong>（高さは見出しに合わせて自動調整）。<br>
                         正方形に近い画像がきれいに収まります。空欄なら表示しません。
@@ -1208,13 +1231,14 @@ function fhs_settings_page() {
             });
         });
 
-        /* アイコン画像：メディアライブラリから選ぶ。
-           wp.media が使えない環境でも、URLを直接貼れば動くようにしてある。 */
-        (function(){
-            var input = document.getElementById('fhs-logo-url');
+        /* 画像を選ぶ欄。ページ内にいくつあっても動くようクラスで走査する。
+           wp.media が使えない環境でも、URLを直接貼れば動く。 */
+        document.querySelectorAll('.fhs-logofield').forEach(function(field){
+            var input = field.querySelector('.fhs-logo-url');
+            var preview = field.querySelector('.fhs-logo-preview');
+            var pick = field.querySelector('.fhs-logo-pick');
+            var clear = field.querySelector('.fhs-logo-clear');
             if (!input) return;
-            var wrap = input.closest('.fhs-logofield');
-            var preview = wrap.querySelector('.fhs-logo-preview');
             var frame = null;
             function render(){
                 var url = input.value.trim();
@@ -1222,20 +1246,19 @@ function fhs_settings_page() {
                 else { preview.textContent = '未設定'; preview.classList.add('is-empty'); }
             }
             input.addEventListener('input', render);
-            document.getElementById('fhs-logo-clear').addEventListener('click', function(){ input.value = ''; render(); });
-            document.getElementById('fhs-logo-pick').addEventListener('click', function(){
+            if (clear) clear.addEventListener('click', function(){ input.value = ''; render(); });
+            if (pick) pick.addEventListener('click', function(){
                 if (!window.wp || !window.wp.media) { input.focus(); return; }   // 使えなければ手入力に任せる
                 if (frame) { frame.open(); return; }
-                frame = wp.media({ title: 'アイコンにする画像を選ぶ', button: { text: 'この画像を使う' },
+                frame = wp.media({ title: '画像を選ぶ', button: { text: 'この画像を使う' },
                                    library: { type: 'image' }, multiple: false });
                 frame.on('select', function(){
-                    var a = frame.state().get('selection').first().toJSON();
-                    input.value = a.url;
+                    input.value = frame.state().get('selection').first().toJSON().url;
                     render();
                 });
                 frame.open();
             });
-        })();
+        });
 
         /* ショートコードのコピーボタン。
            管理画面が https でないと navigator.clipboard が使えないため、
@@ -1848,6 +1871,11 @@ function fhs_shortcode($atts = array()) {
     .fhs-operator{margin-top:18px;padding-top:16px;border-top:1px solid var(--fhs-line);font-size:14px;color:#4b5563;line-height:1.9}
     .fhs-operator-t{font-weight:700;color:var(--fhs-ink);margin-bottom:4px;font-size:15px}
     .fhs-operator span{display:inline-block;min-width:6.5em;padding-right:10px;color:var(--fhs-muted)}
+    /* 会社の画像は正方形に切り出して丸く見せる（縦横比が違っても中央でトリミング） */
+    .fhs-operator-body{display:flex;align-items:center;gap:16px}
+    .fhs-wrap .fhs-opimg{width:72px;height:72px;flex:0 0 72px;border-radius:50%;object-fit:cover;object-position:center;background:#f6f8fa;border:1px solid var(--fhs-line);padding:0}
+    .fhs-operator-info{min-width:0}
+    @media(max-width:480px){.fhs-wrap .fhs-opimg{width:56px;height:56px;flex:0 0 56px}.fhs-operator-body{gap:12px}}
     .fhs-err{background:#fdecea;border:1px solid #f5c6cb;color:#c0392b;padding:10px 12px;border-radius:9px;margin-bottom:10px;font-size:16px}
     .fhs-spec{width:100%;border-collapse:collapse;margin:16px 0;font-size:17px}
     .fhs-spec th,.fhs-spec td{border-bottom:1px solid var(--fhs-line);padding:12px 10px;text-align:left}
@@ -2144,15 +2172,23 @@ function fhs_shortcode($atts = array()) {
        判断する材料になる。設定済みの項目だけを出す。 */
     $op_disp = fhs_opt('operator_name', '');
     $op_addr = fhs_opt('operator_address', ''); $op_tel = fhs_opt('operator_contact', '');
+    $op_img  = fhs_opt('company_image', '');
     $op_tel_shown = ($op_tel !== '' && fhs_flag('show_contact', false));
     if ($op_disp || $op_addr || $op_tel_shown):
 ?>
     <div class="fhs-operator">
       <div class="fhs-operator-t">査定担当会社</div>
-<?php if ($op_disp): ?>      <div><span>運営</span><?php echo esc_html($op_disp); ?></div>
-<?php endif; if ($op_addr): ?>      <div><span>所在地</span><?php echo esc_html($op_addr); ?></div>
-<?php endif; if ($op_tel && fhs_flag('show_contact', false)): ?>      <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>
+      <div class="fhs-operator-body">
+<?php if ($op_img): ?>
+        <img class="fhs-opimg" src="<?php echo esc_url($op_img); ?>" alt="<?php echo esc_attr($op_disp); ?>" loading="lazy">
 <?php endif; ?>
+        <div class="fhs-operator-info">
+<?php if ($op_disp): ?>          <div><span>運営</span><?php echo esc_html($op_disp); ?></div>
+<?php endif; if ($op_addr): ?>          <div><span>所在地</span><?php echo esc_html($op_addr); ?></div>
+<?php endif; if ($op_tel_shown): ?>          <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>
+<?php endif; ?>
+        </div>
+      </div>
     </div>
 <?php endif; ?>
 <?php endif; /* !$teaser ここまで */ ?>
