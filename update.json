@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.9.0\n・「査定担当会社」の欄に会社の画像を出せるようにしました。設定→基本設定→「会社の画像」でメディアから選べます。会社名・所在地の左に丸く表示されます（正方形でない画像も中央を正方形に切り出します）"
+    "changelog": "1.10.0\n・スパム対策を強化しました。設定→入力項目→「スパム対策」で調整できます\n・リンク（http://など）を含む申し込みを受け付けません（既定オン）。宣伝リンクを貼る典型的なスパムを止めます\n・キリル文字・アラビア文字・タイ文字を含む申し込みは常に受け付けません\n・NGワードを登録できます（1行1語）\n・「お名前に日本語が無い申し込みを断る」も選べます（既定オフ。ローマ字で書く方も弾いてしまうため、スパムが増えてからの利用を想定）"
   }
 }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.9.0
+ * Version: 1.10.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.9.0');
+define('FHS_VER', '1.10.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -452,6 +452,10 @@ function fhs_sanitize_options($in) {
         'show_marketing'   => !empty($in['show_marketing']) ? '1' : '0',
         'show_note'        => !empty($in['show_note'])      ? '1' : '0',
         'step_form'        => !empty($in['step_form'])      ? '1' : '0',
+        // スパム対策
+        'spam_block_link'  => !empty($in['spam_block_link'])  ? '1' : '0',
+        'spam_require_ja'  => !empty($in['spam_require_ja'])  ? '1' : '0',
+        'spam_words'       => sanitize_textarea_field($in['spam_words'] ?? ''),
         'third_party'      => !empty($in['third_party'])    ? '1' : '0',
         'third_party_name' => sanitize_text_field($in['third_party_name'] ?? ''),
         'third_party_url'  => esc_url_raw($in['third_party_url'] ?? ''),
@@ -595,6 +599,48 @@ function fhs_bot_errors() {
     $elapsed = isset($_POST['fhs_elapsed']) ? intval($_POST['fhs_elapsed']) : 0;
     if ($elapsed < 3000) return array('入力が早すぎます。もう一度お試しください。');
     return array();
+}
+
+/**
+ * スパム判定。日本語の不動産フォームには出てこない特徴を見る。
+ *
+ * ★引っかかった理由は返さない。どの条件で弾かれたかをボットに学習させないため、
+ *   ハニーポットと同じ「送信を受け付けられませんでした。」だけを返す。
+ * ★お客様を取りこぼす損失の方が大きいので、誤判定の起きにくいものだけを既定で有効にする。
+ */
+function fhs_spam_hit($values) {
+    $block_link = fhs_flag('spam_block_link', true);
+    $words = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) fhs_opt('spam_words', ''))), 'strlen'));
+
+    foreach ($values as $v) {
+        $v = (string) $v;
+        if (trim($v) === '') continue;
+
+        // 1) リンクの埋め込み。査定の申し込みでURLを書く理由がない
+        if ($block_link && preg_match('#https?://|www\.[a-z0-9-]+\.|\[url|\[link|</?a\s#iu', $v)) return true;
+
+        // 2) 日本の不動産査定の申し込みには出てこない文字種（キリル・アラビア・タイ）
+        if (preg_match('/[\x{0400}-\x{04FF}\x{0600}-\x{06FF}\x{0E00}-\x{0E7F}]/u', $v)) return true;
+
+        // 3) 管理画面で登録したNGワード
+        foreach ($words as $w) {
+            $hit = function_exists('mb_stripos') ? mb_stripos($v, $w) : stripos($v, $w);
+            if ($hit !== false) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * お名前に日本語が1文字も含まれないか。
+ * 海外のボットは名前をローマ字で入れることが多いので効き目は大きいが、
+ * ローマ字で書く方や外国籍の方まで弾いてしまうため、既定はオフ。
+ */
+function fhs_name_not_japanese($name) {
+    if (!fhs_flag('spam_require_ja', false)) return false;
+    $name = preg_replace('/\s+/u', '', (string) $name);
+    if ($name === '') return false;
+    return !preg_match('/[\x{3040}-\x{30FF}\x{4E00}-\x{9FFF}\x{3005}-\x{3007}\x{FF66}-\x{FF9F}]/u', $name);
 }
 
 /**
@@ -918,6 +964,37 @@ function fhs_settings_page() {
                 </tbody>
             </table>
             <?php endforeach; ?>
+
+            <h4 style="margin:26px 0 6px">スパム対策</h4>
+            <p class="description" style="max-width:860px">
+                すでに<strong>ハニーポット・送信までの経過時間・同一IP/同一メールの回数制限</strong>が常時働いています。
+                ここでは、それを抜けてきた場合の追加の網を設定します。<br>
+                <strong>引っかかった送信には理由を伝えません</strong>（どこで弾かれたかをボットに学習させないため）。
+            </p>
+            <table class="form-table">
+                <tr><th>リンクを含む申し込み</th><td>
+                    <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[spam_block_link]" value="1" <?php checked(fhs_flag('spam_block_link', true)); ?>> URL（http://… など）が入力されていたら受け付けない</label>
+                    <p class="description">
+                        査定の申し込みでURLを書く理由はまずないので、<strong>オンのままを推奨します。</strong>
+                        宣伝リンクを貼る典型的なスパムを止められます。<br>
+                        ※あわせて、キリル文字・アラビア文字・タイ文字が含まれる申し込みは常に受け付けません（設定不要）。
+                    </p>
+                </td></tr>
+                <tr><th>お名前の日本語チェック</th><td>
+                    <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[spam_require_ja]" value="1" <?php checked(fhs_flag('spam_require_ja', false)); ?>> お名前に日本語が1文字も含まれない場合は受け付けない</label>
+                    <p class="description">
+                        海外からのスパムによく効きますが、<strong>お名前をローマ字で書く方や外国籍の方も弾いてしまいます。</strong><br>
+                        <strong>既定はオフ</strong>です。実際にスパムが増えてきたらオンにしてください。
+                    </p>
+                </td></tr>
+                <tr><th>NGワード</th><td>
+                    <textarea name="<?php echo FHS_OPT; ?>[spam_words]" rows="4" style="width:100%;max-width:520px" placeholder="1行に1語ずつ&#10;例：SEO対策&#10;例：ビットコイン"><?php echo esc_textarea(fhs_opt('spam_words')); ?></textarea>
+                    <p class="description">
+                        1行に1語。入力欄のどこかにこの語が含まれていたら受け付けません（大文字小文字は区別しません）。<br>
+                        実際に届いたスパムの特徴的な単語を足していく使い方を想定しています。<strong>短すぎる語は誤爆します</strong>のでご注意ください。
+                    </p>
+                </td></tr>
+            </table>
 
             <h4 style="margin:26px 0 6px">見せ方</h4>
             <table class="form-table"><tr><th>ステップ表示</th><td>
@@ -1493,6 +1570,17 @@ function fhs_ajax() {
     }
 
     if ($errors) wp_send_json(array('ok' => false, 'errors' => $errors));
+
+    /* スパム判定。自由入力の欄をまとめて見る。
+       ★理由は伝えない（どこで弾かれたかをボットに教えないため）。 */
+    $free_text = array($address, $note);
+    foreach (array($cust, $situ, $prop_vals) as $set) {
+        foreach ($set as $item) $free_text[] = $item['val'];
+    }
+    $cust_name = isset($cust['name']) ? $cust['name']['val'] : '';
+    if (fhs_spam_hit($free_text) || fhs_name_not_japanese($cust_name)) {
+        wp_send_json(array('ok' => false, 'errors' => array('送信を受け付けられませんでした。')));
+    }
 
     // ★入力内容が正しいときだけ回数を数える。
     //   入力ミスでも数えると、間違えた正規のお客様が先にブロックされてしまう。
