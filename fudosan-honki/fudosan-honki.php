@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.10.0
+ * Version: 1.10.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.10.0');
+define('FHS_VER', '1.10.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -748,6 +748,33 @@ function fhs_admin_notify_body($ctx) {
     return $b;
 }
 
+/**
+ * 「更新を確認」ボタン。
+ * WordPressの自動チェックは最大12時間おきで、押さないと新版に気づけない。
+ * こちらのキャッシュとWP側の更新情報を捨てて、その場で確認し直す。
+ */
+add_action('admin_post_fhs_check_update', 'fhs_check_update');
+function fhs_check_update() {
+    if (!current_user_can('manage_options')) wp_die('権限がありません');
+    check_admin_referer('fhs_check_update');
+    delete_transient('fhs_honki_updater_' . md5(plugin_basename(__FILE__)));
+    delete_site_transient('update_plugins');
+    if (function_exists('wp_update_plugins')) wp_update_plugins();
+    wp_safe_redirect(admin_url('admin.php?page=fudosan-honki&checked=1'));
+    exit;
+}
+
+/** 配信されている最新バージョン（分からなければ空） */
+function fhs_latest_version() {
+    $t = get_site_transient('update_plugins');
+    $me = plugin_basename(__FILE__);
+    if (is_object($t)) {
+        if (!empty($t->response[$me]->new_version))  return $t->response[$me]->new_version;
+        if (!empty($t->no_update[$me]->new_version)) return $t->no_update[$me]->new_version;
+    }
+    return '';
+}
+
 /* テストメール送信（迷惑メール判定・文面の確認用） */
 add_action('admin_post_fhs_test_mail', 'fhs_test_mail');
 function fhs_test_mail() {
@@ -840,7 +867,31 @@ function fhs_settings_page() {
                     : 'テストメールの送信に失敗しました。WP Mail SMTP などの送信設定を確認してください。') .
                 '</p></div>';
         } ?>
-        <p>ページに <code>[fudosan_honki]</code> を貼ると申込フォームが表示されます。詳しい書き方は「<strong>使い方</strong>」タブへ。</p>
+        <?php
+        $fhs_latest = fhs_latest_version();
+        $fhs_has_new = ($fhs_latest !== '' && version_compare(FHS_VER, $fhs_latest, '<'));
+        if (isset($_GET['checked'])) {
+            echo '<div class="notice notice-' . ($fhs_has_new ? 'warning' : 'success') . ' is-dismissible"><p>'
+               . ($fhs_has_new
+                   ? '新しいバージョン <strong>' . esc_html($fhs_latest) . '</strong> があります。'
+                     . '<a href="' . esc_url(admin_url('plugins.php')) . '">プラグイン画面</a>から更新してください。'
+                   : 'このプラグインは最新です。')
+               . '</p></div>';
+        }
+        ?>
+        <p style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span>ページに <code>[fudosan_honki]</code> を貼ると申込フォームが表示されます。詳しい書き方は「<strong>使い方</strong>」タブへ。</span>
+        </p>
+        <p style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-6px 0 14px">
+            <span class="description">バージョン <strong><?php echo esc_html(FHS_VER); ?></strong><?php
+                if ($fhs_has_new) echo '　<span style="color:#b32d2e">最新は ' . esc_html($fhs_latest) . ' です</span>';
+                elseif ($fhs_latest !== '') echo '　（最新です）';
+            ?></span>
+            <a class="button" href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=fhs_check_update'), 'fhs_check_update')); ?>">更新を確認</a>
+            <?php if ($fhs_has_new): ?>
+            <a class="button button-primary" href="<?php echo esc_url(admin_url('plugins.php')); ?>">プラグイン画面で更新する</a>
+            <?php endif; ?>
+        </p>
         <h2 class="nav-tab-wrapper" id="fhs-tabs">
             <a href="#" class="nav-tab nav-tab-active" data-tab="basic">基本設定</a>
             <a href="#" class="nav-tab" data-tab="fields">入力項目</a>
