@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.10.1\n・設定画面の上部に「更新を確認」ボタンと現在のバージョンを表示しました。WordPressの自動チェックは最大12時間おきなので、新しい版が出ているかその場で確かめられます"
+    "changelog": "1.11.0\n・受付完了メールの末尾を、免責の断り書きから「査定担当会社」の連絡先に変更（会社名・所在地・電話・メール・サイト）\n・「当社は宅地建物取引業者ではありません」の一文を削除（査定を行うのは宅建業者であり、差出人と食い違って混乱するため）\n・会社の情報を「査定担当会社」タブに集約（基本設定から移動）\n・会社サイトURL・問い合わせメールの設定を追加。フォーム下部の会社欄にもサイトを表示\n・入力欄の✓は形式が正しいときだけ表示（電話「090」だけで✓が出ないように）"
   }
 }

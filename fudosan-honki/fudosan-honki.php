@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.10.1
+ * Version: 1.11.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.10.1');
+define('FHS_VER', '1.11.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -441,6 +441,8 @@ function fhs_sanitize_options($in) {
         'operator_name'    => sanitize_text_field($in['operator_name'] ?? ''),
         'operator_contact' => sanitize_text_field($in['operator_contact'] ?? ''),
         'operator_address' => sanitize_text_field($in['operator_address'] ?? ''),
+        'operator_email'   => sanitize_email($in['operator_email'] ?? ''),
+        'operator_url'     => esc_url_raw($in['operator_url'] ?? ''),
         'from_email'       => sanitize_email($in['from_email'] ?? ''),
         'notify_email'     => sanitize_email($in['notify_email'] ?? ''),
         'privacy_url'      => esc_url_raw($in['privacy_url'] ?? ''),
@@ -667,30 +669,47 @@ function fhs_default_mail_body() {
         . "{customer_details}\n\n"
         . "{property_details}\n\n"
         . "担当者が内容を確認のうえ、ご入力いただいたご連絡先へご連絡いたします。\n"
-        . "いましばらくお待ちください。\n\n"
-        . "{operator_name}\n"
-        . "お問い合わせ: {operator_contact}";
+        . "いましばらくお待ちください。";
 }
 
 /**
- * 免責文は「鑑定評価ではない」ことを示す法的に必須の文面。
- * 本文テンプレートは管理画面で自由に編集できるため、テンプレート内に免責を置くと
- * 編集した瞬間に消えてしまう。よって★テンプレートの外で必ず連結する。
- * （既に免責を含むテンプレートには二重に付けない）
+ * メールの末尾に付ける「査定担当会社の連絡先」。
+ *
+ * ★ここは申し込みが済んだ後なので、断り書きより連絡先を出す方が役に立つ。
+ *   フォーム上では電話番号を伏せている（電話で済ませてしまい申し込みが減るため）が、
+ *   このメールには必ず載せる。
+ * ★「当社は宅地建物取引業者ではない」とは書かない。査定を行うのは宅建業者であり、
+ *   このメールの差出人もその会社名なので、事実と食い違って受け取った方が混乱する。
+ *   断るのは「鑑定評価ではない（不動産鑑定士法との区別）」と「価格を保証しない」の2点で足りる。
  */
-function fhs_legal_disclaimer() {
-    return "───────────────────────────────\n"
-        . "【ご注意】\n"
-        . "・担当者がお伝えする価格は『参考価格の情報提供』であり、\n"
-        . "  不動産鑑定士による『鑑定評価』ではありません。\n"
-        . "・実際の売却価格・成約価格を保証するものではありません。\n"
-        . "・当社は宅地建物取引業者ではなく、売買の媒介・代理は行いません。\n"
-        . "───────────────────────────────";
+function fhs_mail_footer() {
+    $name  = fhs_opt('operator_name', '');
+    $addr  = fhs_opt('operator_address', '');
+    $tel   = fhs_opt('operator_contact', '');
+    $mail  = fhs_opt('operator_email', '');
+    $url   = fhs_opt('operator_url', '');
+
+    $line = "───────────────────────────────\n";
+    $out  = $line . "査定に関するお問い合わせは下記までお願いいたします。\n\n";
+    if ($name !== '') $out .= $name . "\n";
+    if ($addr !== '') $out .= "所在地 : " . $addr . "\n";
+    if ($tel  !== '') $out .= "電話   : " . $tel . "\n";
+    if ($mail !== '') $out .= "メール : " . $mail . "\n";
+    if ($url  !== '') $out .= "サイト : " . $url . "\n";
+    $out .= $line;
+    $out .= "※お伝えする価格は売却の参考となる査定価格であり、不動産鑑定士による\n"
+          . "　鑑定評価ではありません。実際の売却価格を保証するものではありません。";
+    return $out;
 }
 
+/**
+ * 末尾は必ず付ける。本文テンプレートは管理画面で自由に書き換えられるため、
+ * テンプレートの中に置くと編集した瞬間に消えてしまう。よってテンプレートの外で連結する。
+ * （利用者が自分で同じ趣旨を書いている場合は二重にしない）
+ */
 function fhs_with_disclaimer($body) {
     // mbstring が無いサーバーでも動くよう strpos を使う（UTF-8同士の検索は strpos で正しく判定できる）
-    if (strpos($body, '鑑定評価') === false) $body .= "\n\n" . fhs_legal_disclaimer();
+    if (strpos($body, '鑑定評価') === false) $body .= "\n\n" . fhs_mail_footer();
     return $body . "\n";
 }
 
@@ -894,6 +913,7 @@ function fhs_settings_page() {
         </p>
         <h2 class="nav-tab-wrapper" id="fhs-tabs">
             <a href="#" class="nav-tab nav-tab-active" data-tab="basic">基本設定</a>
+            <a href="#" class="nav-tab" data-tab="company">査定担当会社</a>
             <a href="#" class="nav-tab" data-tab="fields">入力項目</a>
             <a href="#" class="nav-tab" data-tab="privacy">個人情報</a>
             <a href="#" class="nav-tab" data-tab="mail">自動返信メール</a>
@@ -907,32 +927,12 @@ function fhs_settings_page() {
             <table class="form-table">
                 <tr><th>サイト名</th><td><input type="text" name="<?php echo FHS_OPT; ?>[site_name]" value="<?php echo esc_attr(fhs_opt('site_name', '不動産査定')); ?>" size="40">
                     <p class="description">メールの件名や差し込みに使われます。</p></td></tr>
-                <tr><th>運営者名（会社名）</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_name]" value="<?php echo esc_attr(fhs_opt('operator_name')); ?>" size="40" placeholder="例：ミカタ株式会社">
-                    <p class="description">フォームとメールに表示されます。<strong>お客様が「どこの会社に自宅と連絡先を渡すのか」を判断する材料</strong>なので、必ずご記入ください。</p></td></tr>
-                <tr><th>所在地</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_address]" value="<?php echo esc_attr(fhs_opt('operator_address')); ?>" size="50" placeholder="例：岡山県岡山市北区○○1-2-3"></td></tr>
-                <tr><th>会社の画像</th><td>
-                    <?php echo fhs_image_field('company_image', true); ?>
-                    <p class="description">
-                        フォーム下部の「査定担当会社」の欄で、<strong>会社名・所在地の左に丸く表示されます</strong>。<br>
-                        会社ロゴ、店舗の外観、担当者の顔写真など。<strong>正方形の画像</strong>を用意してください
-                        （正方形でなくても中央を正方形に切り出して丸くします）。空欄なら表示しません。
-                    </p>
-                </td></tr>
                 <tr><th>住所欄の入力例</th><td>
                     <input type="text" name="<?php echo FHS_OPT; ?>[address_example]" value="<?php echo esc_attr(fhs_opt('address_example')); ?>" size="50" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>">
                     <p class="description">
                         物件住所の欄に薄く表示される入力例です。空欄なら「<?php echo esc_html(fhs_address_placeholder()); ?>」と表示されます。<br>
                         エリアを絞ったサイトなら <code>例：岡山市北区〇〇1-2-3</code> のように具体的に書くと、お客様が書き方に迷いません。<br>
                         <strong>都道府県は入れていません。</strong>市区町村単位で扱うサービスのため、県から書かせる必要がないためです。
-                    </p>
-                </td></tr>
-                <tr><th>問い合わせ先</th><td>
-                    <input type="text" name="<?php echo FHS_OPT; ?>[operator_contact]" value="<?php echo esc_attr(fhs_opt('operator_contact')); ?>" size="40" placeholder="例：086-000-0000 / info@example.com"><br>
-                    <label style="display:inline-block;margin-top:8px"><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_contact]" value="1" <?php checked(fhs_flag('show_contact', false)); ?>> この連絡先を<strong>フォームにも表示する</strong></label>
-                    <p class="description">
-                        <strong>ふだんはオフのままを推奨します。</strong>申し込みフォームに電話番号があると、
-                        フォームを送らずに電話で済ませる方が出て、<strong>申し込み数が減ります</strong>（どこから来たお客様かも分からなくなります）。<br>
-                        オフでも、<strong>受付完了メールには必ず記載されます</strong>ので、お客様が連絡できなくなることはありません。
                     </p>
                 </td></tr>
                 <tr><th>送信元メール</th><td><input type="email" name="<?php echo FHS_OPT; ?>[from_email]" value="<?php echo esc_attr(fhs_opt('from_email')); ?>" size="40" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
@@ -975,6 +975,52 @@ function fhs_settings_page() {
                 <tr><th>利用規約・免責URL</th><td><input type="url" name="<?php echo FHS_OPT; ?>[terms_url]" value="<?php echo esc_attr(fhs_opt('terms_url')); ?>" size="50"></td></tr>
             </table>
             </div>
+<div class="fhs-tabpanel" data-tab="company" style="display:none">
+            <h3>査定担当会社</h3>
+            <p class="description" style="max-width:900px">
+                ここに入れた内容が、<strong>フォーム下部の「査定担当会社」の欄</strong>と
+                <strong>受付完了メールの末尾</strong>に表示されます。<br>
+                お客様が「どこの会社に自宅と連絡先を渡すのか」を判断する材料になります。
+                提携先の不動産会社が査定を行う場合は、<strong>その会社の情報</strong>を入れてください。
+            </p>
+            <table class="form-table">
+                <tr><th>会社名</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_name]" value="<?php echo esc_attr(fhs_opt('operator_name')); ?>" size="40" placeholder="例：ミカタ株式会社">
+                    <p class="description">フォームとメールに表示されます。<strong>お客様が「どこの会社に自宅と連絡先を渡すのか」を判断する材料</strong>なので、必ずご記入ください。</p></td></tr>
+                <tr><th>所在地</th><td><input type="text" name="<?php echo FHS_OPT; ?>[operator_address]" value="<?php echo esc_attr(fhs_opt('operator_address')); ?>" size="50" placeholder="例：岡山県岡山市北区○○1-2-3"></td></tr>
+                <tr><th>会社サイトURL</th><td>
+                    <input type="url" name="<?php echo FHS_OPT; ?>[operator_url]" value="<?php echo esc_attr(fhs_opt('operator_url')); ?>" size="50" placeholder="https://example.com/">
+                    <p class="description">
+                        フォームとメールに表示されます。お客様が会社を調べられるようにしておくと、
+                        <strong>連絡先を預ける不安が減り、申し込みが増えます</strong>。
+                    </p>
+                </td></tr>
+                <tr><th>電話番号</th><td>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[operator_contact]" value="<?php echo esc_attr(fhs_opt('operator_contact')); ?>" size="40" placeholder="例：086-000-0000 / info@example.com"><br>
+                    <label style="display:inline-block;margin-top:8px"><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_contact]" value="1" <?php checked(fhs_flag('show_contact', false)); ?>> この連絡先を<strong>フォームにも表示する</strong></label>
+                    <p class="description">
+                        <strong>ふだんはオフのままを推奨します。</strong>申し込みフォームに電話番号があると、
+                        フォームを送らずに電話で済ませる方が出て、<strong>申し込み数が減ります</strong>（どこから来たお客様かも分からなくなります）。<br>
+                        オフでも、<strong>受付完了メールには必ず記載されます</strong>ので、お客様が連絡できなくなることはありません。
+                    </p>
+                </td></tr>
+                <tr><th>問い合わせメール</th><td>
+                    <input type="email" name="<?php echo FHS_OPT; ?>[operator_email]" value="<?php echo esc_attr(fhs_opt('operator_email')); ?>" size="40" placeholder="info@example.com">
+                    <p class="description">
+                        受付完了メールの末尾に載る、お客様からの問い合わせ先です。<br>
+                        <span class="description">※申し込みの通知を受け取る「通知先メール（担当者）」とは別に指定できます。</span>
+                    </p>
+                </td></tr>
+                <tr><th>会社の画像</th><td>
+                    <?php echo fhs_image_field('company_image', true); ?>
+                    <p class="description">
+                        フォーム下部の「査定担当会社」の欄で、<strong>会社名・所在地の左に丸く表示されます</strong>。<br>
+                        会社ロゴ、店舗の外観、担当者の顔写真など。<strong>正方形の画像</strong>を用意してください
+                        （正方形でなくても中央を正方形に切り出して丸くします）。空欄なら表示しません。
+                    </p>
+                </td></tr>
+            </table>
+            </div>
+
 
             <div class="fhs-tabpanel" data-tab="fields" style="display:none">
             <h3>入力項目の設定</h3>
@@ -1316,8 +1362,8 @@ function fhs_settings_page() {
 
             <h3 style="color:#b32d2e">法的な注意</h3>
             <p class="description" style="max-width:900px">
-                担当者がお伝えする価格は<strong>「参考価格の情報提供」</strong>であり、不動産鑑定士による<strong>「鑑定評価」ではありません</strong>。
-                フォーム・メールの免責文でその旨を明示しています。<strong>免責文は削除しないでください。</strong><br>
+                お伝えする価格は売却の参考となる<strong>査定価格</strong>であり、不動産鑑定士による<strong>「鑑定評価」ではありません</strong>。
+                フォーム・メールの免責文でその旨を明示しています。<strong>この注記は受付完了メールと完了画面に自動で入ります（消せません）。</strong><br>
                 また、集めたお名前・電話番号を<strong>他社に渡す場合は「個人情報」タブの設定を必ずONにしてください</strong>（同意なしの第三者提供は違法です）。
                 公開前に弁護士等の確認を推奨します。
             </p>
@@ -2010,6 +2056,8 @@ function fhs_shortcode($atts = array()) {
     .fhs-operator{margin-top:18px;padding-top:16px;border-top:1px solid var(--fhs-line);font-size:14px;color:#4b5563;line-height:1.9}
     .fhs-operator-t{font-weight:700;color:var(--fhs-ink);margin-bottom:4px;font-size:15px}
     .fhs-operator span{display:inline-block;min-width:6.5em;padding-right:10px;color:var(--fhs-muted)}
+    .fhs-operator a{color:var(--fhs-brand)}
+    .fhs-operator-name{font-weight:700;color:var(--fhs-ink);font-size:15px;margin-bottom:2px}
     /* 会社の画像は正方形に切り出して丸く見せる（縦横比が違っても中央でトリミング） */
     .fhs-operator-body{display:flex;align-items:center;gap:16px}
     .fhs-wrap .fhs-opimg{width:72px;height:72px;flex:0 0 72px;border-radius:50%;object-fit:cover;object-position:center;background:#f6f8fa;border:1px solid var(--fhs-line);padding:0}
@@ -2312,8 +2360,10 @@ function fhs_shortcode($atts = array()) {
     $op_disp = fhs_opt('operator_name', '');
     $op_addr = fhs_opt('operator_address', ''); $op_tel = fhs_opt('operator_contact', '');
     $op_img  = fhs_opt('company_image', '');
+    $op_url  = fhs_opt('operator_url', '');
+    $op_mail = fhs_opt('operator_email', '');
     $op_tel_shown = ($op_tel !== '' && fhs_flag('show_contact', false));
-    if ($op_disp || $op_addr || $op_tel_shown):
+    if ($op_disp || $op_addr || $op_url || $op_tel_shown):
 ?>
     <div class="fhs-operator">
       <div class="fhs-operator-t">査定担当会社</div>
@@ -2322,9 +2372,11 @@ function fhs_shortcode($atts = array()) {
         <img class="fhs-opimg" src="<?php echo esc_url($op_img); ?>" alt="<?php echo esc_attr($op_disp); ?>" loading="lazy">
 <?php endif; ?>
         <div class="fhs-operator-info">
-<?php if ($op_disp): ?>          <div><span>運営</span><?php echo esc_html($op_disp); ?></div>
+<?php if ($op_disp): ?>          <div class="fhs-operator-name"><?php echo esc_html($op_disp); ?></div>
 <?php endif; if ($op_addr): ?>          <div><span>所在地</span><?php echo esc_html($op_addr); ?></div>
+<?php endif; if ($op_url !== ''): ?>          <div><span>サイト</span><a href="<?php echo esc_url($op_url); ?>" target="_blank" rel="noopener"><?php echo esc_html(preg_replace('#^https?://#', '', rtrim($op_url, '/'))); ?></a></div>
 <?php endif; if ($op_tel_shown): ?>          <div><span>お問い合わせ</span><?php echo esc_html($op_tel); ?></div>
+<?php endif; if ($op_tel_shown && $op_mail !== ''): ?>          <div><span>メール</span><?php echo esc_html($op_mail); ?></div>
 <?php endif; ?>
         </div>
       </div>
@@ -2377,6 +2429,31 @@ function fhs_shortcode($atts = array()) {
   var ptypeSel = wrap.querySelector('select[name="ptype"]');
   var groups = wrap.querySelectorAll('.fhs-group[data-ptype]');
 
+  /* その欄が「ちゃんと埋まっているか」。
+     ★空でないだけで✓を出すと、「090」だけでもチェックが付いてしまい、
+       送信して初めて形式エラーが出る。見た目と結果が食い違うので形式まで見る。
+     戻り値: null=OK / 'empty'=未入力 / 'format'=形式が違う */
+  function fieldProblem(el){
+    var v = String(el.value == null ? '' : el.value).trim();
+    if (v === '') return 'empty';
+    var type = (el.getAttribute('type') || '').toLowerCase();
+    var mode = (el.getAttribute('inputmode') || '').toLowerCase();
+    var han = v.replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+               .replace(/[－ーｰ−—]/g, '-').replace(/[．]/g, '.');
+    if (type === 'tel') {
+      var digits = han.replace(/[^0-9]/g, '');
+      return (digits.length >= 9 && digits.length <= 11) ? null : 'format';   // サーバー側と同じ基準
+    }
+    if (type === 'email') {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? null : 'format';
+    }
+    if (mode === 'decimal') {                       // 面積・築年などの数値欄
+      return /^[0-9]+(\.[0-9]+)?$/.test(han) ? null : 'format';
+    }
+    return null;
+  }
+  function fieldOk(el){ return fieldProblem(el) === null; }
+
   // 直前の <label> 内の「必須」バッジ
   function badgeFor(el){
     var lbl = el.previousElementSibling;
@@ -2406,7 +2483,7 @@ function fhs_shortcode($atts = array()) {
     var req = currentRequired(), firstEmpty = null, remaining = 0;
     req.forEach(function(el){
       var b = badgeFor(el);
-      var filled = !!(el.value && String(el.value).trim() !== '');
+      var filled = fieldOk(el);   // 形式まで正しいときだけ ✓ にする
       if (b) {
         if (filled) { b.classList.add('fhs-done'); b.textContent = '✓'; }
         else { b.classList.remove('fhs-done'); b.textContent = '必須'; }
@@ -2467,7 +2544,7 @@ function fhs_shortcode($atts = array()) {
     Array.prototype.forEach.call(els, function(el){
       if (!el.offsetParent && el.type !== 'hidden') return;      // 表示されていない種別の欄は対象外
       if (el.closest('.fhs-group[data-ptype]') && el.closest('.fhs-group[data-ptype]').style.display === 'none') return;
-      if (!el.value || String(el.value).trim() === '') out.push(el);
+      if (!fieldOk(el)) out.push(el);
     });
     var agree = box.querySelector('input[name="agree"]');
     if (agree && !agree.checked) out.push(agree);
@@ -2504,7 +2581,12 @@ function fhs_shortcode($atts = array()) {
       var miss = missingIn(stepNow);
       if (miss.length) {
         errBox.innerHTML = miss.map(function(el){
-          return '<div class="fhs-err">「' + esc(labelTextOf(el)) + '」を入力してください。</div>';
+          var why = fieldProblem(el);
+          var name = esc(labelTextOf(el));
+          var msg = (why === 'format')
+            ? '「' + name + '」の形式をご確認ください。'
+            : '「' + name + '」を入力してください。';
+          return '<div class="fhs-err">' + msg + '</div>';
         }).join('');
         errBox.scrollIntoView({ behavior:'smooth', block:'center' });
         if (miss[0].focus) miss[0].focus();
@@ -2667,7 +2749,7 @@ function fhs_shortcode($atts = array()) {
       + '<table class="fhs-spec">'+rows+'</table>'
       + det
       + mailLine
-      + '<div class="fhs-disc">担当者がお伝えする価格は<strong>参考価格の情報提供</strong>であり、不動産鑑定士による<strong>鑑定評価ではありません</strong>。実際の売却価格を保証するものではありません。<strong>当社は宅地建物取引業者ではなく、売買の媒介・代理は行いません。</strong></div>';
+      + '<div class="fhs-disc">お伝えする価格は売却の参考となる<strong>査定価格</strong>であり、不動産鑑定士による<strong>鑑定評価ではありません</strong>。実際の売却価格を保証するものではありません。</div>';
     resultCard.innerHTML = html;
     formCard.style.display = 'none';
     resultCard.style.display = 'block';
