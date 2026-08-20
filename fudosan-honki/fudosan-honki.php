@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.11.0
+ * Version: 1.11.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.11.0');
+define('FHS_VER', '1.11.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -859,6 +859,7 @@ function fhs_image_field($key, $round = false) {
 }
 
 function fhs_settings_page() {
+    if (!current_user_can('manage_options')) wp_die('権限がありません');
     ?>
     <style>
       .fhs-colorfield{display:inline-flex;align-items:center;gap:8px}
@@ -1478,10 +1479,26 @@ function fhs_settings_page() {
     </script>
 <?php }
 
+/**
+ * 直近の保存エラーを控える。
+ * MySQLのエラー文には値が混ざることがある（例: Duplicate entry '…' for key）ため、
+ * 全ページ読み込みで展開される autoload には載せず、長さも切り詰める。
+ */
+function fhs_record_db_error($msg) {
+    $msg = fhs_trim_len((string) $msg, 300) . ' @ ' . current_time('mysql');
+    if (get_option('fhs_last_db_error') === false) {
+        add_option('fhs_last_db_error', $msg, '', 'no');
+    } else {
+        update_option('fhs_last_db_error', $msg, 'no');
+    }
+}
+
 /* =========================================================================
  * 9. 管理画面：申込一覧
  * ======================================================================= */
 function fhs_leads_page() {
+    // ★メニュー経由でなくても個人情報を出さない。add_submenu_page の権限指定だけに頼らない
+    if (!current_user_can('manage_options')) wp_die('権限がありません');
     global $wpdb;
     $table = $wpdb->prefix . 'fudosan_honki_leads';
     $rows = $wpdb->get_results("SELECT * FROM $table ORDER BY id DESC LIMIT 200");
@@ -1737,13 +1754,13 @@ function fhs_ajax() {
     $ins = $wpdb->insert($wpdb->prefix . 'fudosan_honki_leads', $row);
     if ($ins === false) {
         // 1回目失敗：不足カラムを補ってからもう一度だけ試す
-        update_option('fhs_last_db_error', $wpdb->last_error . ' @ ' . current_time('mysql'));
+        fhs_record_db_error($wpdb->last_error);
         fhs_ensure_columns();
         $ins = $wpdb->insert($wpdb->prefix . 'fudosan_honki_leads', $row);
     }
     if ($ins === false) {
         // リトライも失敗：受付できていないので「完了」と偽らず、メールも送らずにエラーを返す
-        update_option('fhs_last_db_error', $wpdb->last_error . ' @ ' . current_time('mysql'));
+        fhs_record_db_error($wpdb->last_error);
         wp_send_json(array('ok' => false, 'errors' => array(
             '申し訳ありません。ただいま受付処理でエラーが発生しました。お手数ですが時間をおいて再度お試しください。',
         )));
