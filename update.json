@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.11.1",
+  "version": "1.11.2",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.11.1\n・管理画面の申込一覧・設定画面そのものに権限チェックを追加（メニュー経由でなく直接呼ばれた場合にも個人情報を出さない多層防御）\n・保存エラーの記録を全ページ読み込み対象から外し、長さを制限（MySQLのエラー文に値が混ざる場合に備えて）"
+    "changelog": "1.11.2\n・サイトが https でない場合に管理画面で警告（お名前・電話・物件住所が暗号化されずに送信されるため）"
   }
 }

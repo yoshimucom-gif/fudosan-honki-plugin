@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.11.1
+ * Version: 1.11.2
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.11.1');
+define('FHS_VER', '1.11.2');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -403,6 +403,25 @@ add_action('admin_notices', function () {
        . '<a class="button button-primary" href="' . esc_url(get_edit_post_link($id)) . '">ページを編集する</a> '
        . '<a class="button" href="' . esc_url(admin_url('admin.php?page=fudosan-honki')) . '">設定を開く</a></p></div>';
 });
+
+/**
+ * サイトが https でなければ強く警告する。
+ * このフォームは物件の住所・お名前・電話番号を送信する。http のままだと
+ * その内容が暗号化されずに流れ、公衆Wi-Fi等では第三者に読み取られる。
+ * ※管理画面だけ https という構成もあるので、判定は home_url()（お客様が見る側）で行う。
+ */
+add_action('admin_notices', function () {
+    if (!current_user_can('manage_options')) return;
+    if (fhs_site_is_https()) return;
+    echo '<div class="notice notice-error"><p><strong>【訪問査定申込】このサイトは https ではありません。</strong><br>'
+       . 'お客様が入力した<strong>お名前・電話番号・物件の住所が、暗号化されずに送信されます</strong>。'
+       . '公衆Wi-Fiなどでは第三者に読み取られます。'
+       . 'サーバーでSSL証明書を有効にし、「設定 → 一般」のサイトアドレスを <code>https://</code> に変更してください。</p></div>';
+});
+
+function fhs_site_is_https() {
+    return strpos(strtolower((string) home_url()), 'https://') === 0;
+}
 
 /* 公開前チェック。お客様に見える信頼性の材料が抜けたまま公開されるのを防ぐ */
 add_action('admin_notices', function () {
