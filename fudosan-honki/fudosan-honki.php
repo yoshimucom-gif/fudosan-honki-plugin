@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.11.2
+ * Version: 1.11.3
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -17,7 +17,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.11.2');
+define('FHS_VER', '1.11.3');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -750,8 +750,12 @@ function fhs_mail_body($ctx) {
         '{operator_contact}'  => fhs_opt('operator_contact', ''),
     );
     // 未設定の項目で「お問い合わせ: 」「 様」のようにラベルだけが残らないよう、その行ごと落とす
-    if (trim($repl['{operator_contact}']) === '') $tmpl = preg_replace('/^.*\{operator_contact\}.*\R?/m', '', $tmpl);
-    if (trim($repl['{operator_name}'])    === '') $tmpl = preg_replace('/^\h*\{operator_name\}\h*\R?/m', '', $tmpl);
+    // ★会社の連絡先はメール末尾（fhs_mail_footer）に必ず入る。本文側にも署名を書くと
+    //   会社名と電話が2回出るため、署名タグを含む行はここで落とす。
+    //   以前の初期文面には署名2行が入っており、それを保存済みの環境が多いので、
+    //   「空のときだけ消す」ではなく常に消す。
+    $tmpl = preg_replace('/^.*\{operator_contact\}.*\R?/m', '', $tmpl);
+    $tmpl = preg_replace('/^.*\{operator_name\}.*\R?/m', '', $tmpl);
     if (trim($repl['{customer_name}'])    === '') $tmpl = preg_replace('/^\h*\{customer_name\}\h*様\h*\R?/m', '', $tmpl);
     $body = strtr($tmpl, $repl);
     // 行ごと削除した箇所に空行が二重に残るため、3行以上の連続改行は2行に畳む
@@ -947,7 +951,7 @@ function fhs_settings_page() {
             <table class="form-table">
                 <tr><th>サイト名</th><td><input type="text" name="<?php echo FHS_OPT; ?>[site_name]" value="<?php echo esc_attr(fhs_opt('site_name', '不動産査定')); ?>" size="40">
                     <p class="description">メールの件名や差し込みに使われます。</p></td></tr>
-                <tr><th>住所欄の入力例</th><td>
+                <tr><th>物件住所の入力例</th><td>
                     <input type="text" name="<?php echo FHS_OPT; ?>[address_example]" value="<?php echo esc_attr(fhs_opt('address_example')); ?>" size="50" placeholder="<?php echo esc_attr(fhs_address_placeholder()); ?>">
                     <p class="description">
                         物件住所の欄に薄く表示される入力例です。空欄なら「<?php echo esc_html(fhs_address_placeholder()); ?>」と表示されます。<br>
@@ -1157,9 +1161,11 @@ function fhs_settings_page() {
                     <p class="description">
                         提携会社の一覧ページや、提携会社での個人情報の取り扱いを説明したページのURL。<br>
                         指定すると、上の「提供先の説明」がフォーム上で<strong>リンクになります</strong>。<br>
-                        <strong>提携先も個人情報を受け取る側です。</strong>お客様が「どこに渡り、そこでどう扱われるか」を
-                        確認できるようにしておくと、第三者提供の同意として確かなものになります
-                        （提携先が地域ごとに変わる場合は、一覧ページを1つ用意してそこへリンクするのが実務的です）。
+                        <strong>提携先が1社だけなら、ここは空欄で構いません。</strong>上の「提供先の説明」に会社名が書いてあれば、
+                        お客様は「どこに渡るか」を判断できます。<br>
+                        一覧ページが要るのは<strong>提携先が複数あって、渡る先がその場で特定できない場合</strong>です
+                        （一括査定サイトが提携会社一覧を置いているのはこのためです）。<br>
+                        なお、<strong>提携先のプライバシーポリシーを自社サイトに載せる義務はありません</strong>。それは提携先自身が公表すべきものです。
                     </p>
                 </td></tr>
             </table>
@@ -1168,8 +1174,8 @@ function fhs_settings_page() {
             <ul style="list-style:disc;margin-left:20px;max-width:860px">
                 <li>個人情報の利用目的（査定とご連絡のため）</li>
                 <li>同意チェック（プライバシーポリシー・免責事項へのリンク付き）</li>
-                <li>「参考価格の情報提供であり鑑定評価ではない」「宅地建物取引業者ではない」旨の免責</li>
-                <li>提供元（運営者名・所在地・問い合わせ先）※ 設定済みの項目のみ</li>
+                <li>「お伝えする価格は査定価格であり、不動産鑑定士による鑑定評価ではない」旨</li>
+                <li>査定担当会社（会社名・所在地・サイト）※「査定担当会社」タブに入れた項目のみ</li>
             </ul>
             </div>
 
@@ -1183,12 +1189,13 @@ function fhs_settings_page() {
                     <textarea name="<?php echo FHS_OPT; ?>[mail_body]" rows="20" style="width:100%;max-width:760px;font-family:monospace;font-size:13px"><?php echo esc_textarea(fhs_opt('mail_body') ?: fhs_default_mail_body()); ?></textarea>
                     <p class="description">
                         空欄にして保存すると初期文面に戻ります。使える差し込みタグ：<br>
-                        <code>{site_name}</code> <code>{customer_name}</code> <code>{customer_details}</code>（お客様情報のまとまり） <code>{property_details}</code>（物件情報のまとまり） <code>{ptype}</code> <code>{address}</code> <code>{survey}</code> <code>{email}</code> <code>{tel}</code> <code>{operator_name}</code> <code>{operator_contact}</code>
+                        <code>{site_name}</code> <code>{customer_name}</code> <code>{customer_details}</code>（お客様情報のまとまり） <code>{property_details}</code>（物件情報のまとまり） <code>{ptype}</code> <code>{address}</code> <code>{survey}</code> <code>{email}</code> <code>{tel}</code><br>
+                        <span class="description">※会社名・電話などの署名は<strong>本文に書く必要はありません</strong>。「査定担当会社」タブの内容がメール末尾に自動で入ります（本文に書くと二重になるため、書かれていても取り除きます）。</span>
                     </p>
                     <p class="description" style="background:#f0f6fc;border-left:4px solid #2271b1;padding:10px 12px;margin-top:10px">
-                        <strong>免責文（「鑑定評価ではない」旨）は、本文を自由に書き換えても自動で付きます（消せません）。</strong><br>
-                        法令上、必ず必要なためです。本文には<strong>ご案内したい内容だけ</strong>をお書きください。
-                        ご自身で同じ趣旨の文面を書かれた場合は、二重にならないよう自動付加を行いません。
+                        <strong>メールの末尾には「査定担当会社の連絡先」と「鑑定評価ではない旨」が自動で付きます。</strong><br>
+                        連絡先は<a href="#" class="fhs-gotab" data-tab="company">査定担当会社</a>タブの内容です。
+                        鑑定評価との区別は法令上必要なため消せません。本文には<strong>ご案内したい内容だけ</strong>をお書きください。
                     </p>
                 </td></tr>
                 <tr><th>到達確認</th><td>
@@ -1484,14 +1491,23 @@ function fhs_settings_page() {
         var tabs = document.querySelectorAll('#fhs-tabs .nav-tab');
         var panels = document.querySelectorAll('.fhs-tabpanel');
         var save = document.getElementById('fhs-save');
+        function showTab(name){
+            tabs.forEach(function(x){ x.classList.toggle('nav-tab-active', x.getAttribute('data-tab') === name); });
+            panels.forEach(function(p){ p.style.display = (p.getAttribute('data-tab') === name) ? '' : 'none'; });
+            if (save) save.style.display = (name === 'usage') ? 'none' : ''; // 使い方タブでは保存ボタンを隠す
+        }
         tabs.forEach(function(t){
             t.addEventListener('click', function(e){
                 e.preventDefault();
-                tabs.forEach(function(x){ x.classList.remove('nav-tab-active'); });
-                t.classList.add('nav-tab-active');
-                var name = t.getAttribute('data-tab');
-                panels.forEach(function(p){ p.style.display = (p.getAttribute('data-tab') === name) ? '' : 'none'; });
-                if (save) save.style.display = (name === 'usage') ? 'none' : ''; // 使い方タブでは保存ボタンを隠す
+                showTab(t.getAttribute('data-tab'));
+            });
+        });
+        // 説明文の中から別タブへ飛ぶリンク
+        document.querySelectorAll('.fhs-gotab').forEach(function(a){
+            a.addEventListener('click', function(e){
+                e.preventDefault();
+                showTab(a.getAttribute('data-tab'));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
     })();
