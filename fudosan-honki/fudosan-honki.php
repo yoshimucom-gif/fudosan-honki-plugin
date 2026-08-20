@@ -2,14 +2,15 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.11.3
+ * Version: 1.12.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
  *
  * ★法的注意:
- *   - 担当者が提示する価格は「参考価格の情報提供」であり、不動産鑑定士の「鑑定評価」ではない。
- *   - 本プラグインは価格を自動表示しない（受付のみ）。
+ *   - 本プラグインは価格を自動表示しない（受付のみ）。価格を提示しないので、
+ *     価格に関する断り書きはフォーム・完了画面・メールのいずれにも置かない。
+ *     価格をどう受け取るべきかは、担当者が査定結果を伝える場面で説明すること。
  *   - 氏名・電話番号という個人情報を取得するため、利用目的の明示（個情法21条）と、
  *     提携先へ渡す場合は第三者提供の同意（個情法27条）が必須。設定でON/OFFできる。
  *   公開前に弁護士等の確認を推奨。
@@ -17,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.11.3');
+define('FHS_VER', '1.12.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -426,15 +427,25 @@ function fhs_site_is_https() {
 /* 公開前チェック。お客様に見える信頼性の材料が抜けたまま公開されるのを防ぐ */
 add_action('admin_notices', function () {
     if (!current_user_can('manage_options')) return;
+    // 「査定担当会社」タブの項目。ここが空だと、フォームにも受付完了メールにも
+    // その行が出ない＝お客様は連絡先の分からない相手に自宅と電話番号を渡すことになる
+    $co = array();
+    if (fhs_opt('operator_name', '')    === '') $co[] = '会社名';
+    if (fhs_opt('operator_address', '') === '') $co[] = '所在地';
+    if (fhs_opt('operator_contact', '') === '') $co[] = '電話番号';
+    if (fhs_opt('operator_url', '')     === '') $co[] = '会社サイトURL';
     $miss = array();
-    if (fhs_opt('operator_name', '') === '')    $miss[] = '運営者名（会社名）';
-    if (fhs_opt('operator_contact', '') === '') $miss[] = '問い合わせ先';
-    if (fhs_opt('privacy_url', '') === '')      $miss[] = 'プライバシーポリシーURL';
-    if (!$miss) return;
-    echo '<div class="notice notice-warning"><p><strong>【訪問査定申込】公開前に未設定の項目があります：'
-       . esc_html(implode(' / ', $miss)) . '</strong><br>'
-       . 'このフォームは<strong>お名前・電話番号という個人情報</strong>を受け取ります。'
-       . 'お客様が「どこの会社に自宅と連絡先を渡すのか」を判断できるよう、運営者情報は必ずご記入ください。'
+    if (fhs_opt('privacy_url', '') === '') $miss[] = 'プライバシーポリシーURL';
+    if (!$co && !$miss) return;
+    $parts = array();
+    if ($co)    $parts[] = '「査定担当会社」タブ：' . implode(' / ', $co);
+    if ($miss)  $parts[] = '「基本設定」タブ：' . implode(' / ', $miss);
+    echo '<div class="notice notice-warning"><p><strong>【訪問査定申込】公開前に未設定の項目があります</strong><br>'
+       . esc_html(implode('　', $parts)) . '<br>'
+       . 'このフォームは<strong>お名前・電話番号・物件の住所</strong>を受け取ります。'
+       . 'お客様が「どこの会社に自宅と連絡先を渡すのか」を確かめられるよう、'
+       . '<strong>会社名・所在地・電話番号・サイト</strong>は埋めてください'
+       . '（空欄の項目は、フォームにも受付完了メールにも表示されません）。'
        . '<a href="' . esc_url(admin_url('admin.php?page=fudosan-honki')) . '">設定画面</a>から設定できます。</p></div>';
 });
 
@@ -694,12 +705,13 @@ function fhs_default_mail_body() {
 /**
  * メールの末尾に付ける「査定担当会社の連絡先」。
  *
- * ★ここは申し込みが済んだ後なので、断り書きより連絡先を出す方が役に立つ。
+ * ★ここは申し込みが済んだ後なので、断り書きではなく連絡先を出す。
+ *   この段階では価格を一切提示していないため、価格に関する断り書きは対象が無い。
+ *   価格をどう受け取るべきかは、担当者が査定結果を伝える場面で説明すること。
  *   フォーム上では電話番号を伏せている（電話で済ませてしまい申し込みが減るため）が、
  *   このメールには必ず載せる。
  * ★「当社は宅地建物取引業者ではない」とは書かない。査定を行うのは宅建業者であり、
  *   このメールの差出人もその会社名なので、事実と食い違って受け取った方が混乱する。
- *   断るのは「鑑定評価ではない（不動産鑑定士法との区別）」と「価格を保証しない」の2点で足りる。
  */
 function fhs_mail_footer() {
     $name  = fhs_opt('operator_name', '');
@@ -715,20 +727,19 @@ function fhs_mail_footer() {
     if ($tel  !== '') $out .= "電話   : " . $tel . "\n";
     if ($mail !== '') $out .= "メール : " . $mail . "\n";
     if ($url  !== '') $out .= "サイト : " . $url . "\n";
-    $out .= $line;
-    $out .= "※お伝えする価格は売却の参考となる査定価格であり、不動産鑑定士による\n"
-          . "　鑑定評価ではありません。実際の売却価格を保証するものではありません。";
-    return $out;
+    return $out . rtrim($line);
 }
 
 /**
- * 末尾は必ず付ける。本文テンプレートは管理画面で自由に書き換えられるため、
+ * 連絡先は必ず付ける。本文テンプレートは管理画面で自由に書き換えられるため、
  * テンプレートの中に置くと編集した瞬間に消えてしまう。よってテンプレートの外で連結する。
- * （利用者が自分で同じ趣旨を書いている場合は二重にしない）
  */
-function fhs_with_disclaimer($body) {
+function fhs_with_footer($body) {
     // mbstring が無いサーバーでも動くよう strpos を使う（UTF-8同士の検索は strpos で正しく判定できる）
-    if (strpos($body, '鑑定評価') === false) $body .= "\n\n" . fhs_mail_footer();
+    // 利用者が本文に自分で連絡先を書いている場合は二重にしない
+    if (strpos($body, '査定に関するお問い合わせは下記まで') === false) {
+        $body .= "\n\n" . fhs_mail_footer();
+    }
     return $body . "\n";
 }
 
@@ -760,7 +771,7 @@ function fhs_mail_body($ctx) {
     $body = strtr($tmpl, $repl);
     // 行ごと削除した箇所に空行が二重に残るため、3行以上の連続改行は2行に畳む
     $body = preg_replace("/(\R){3,}/", "\n\n", $body);
-    return fhs_with_disclaimer(rtrim($body));
+    return fhs_with_footer(rtrim($body));
 }
 
 /* 件名テンプレ */
@@ -778,10 +789,10 @@ function fhs_mail_subject() {
 function fhs_admin_notify_body($ctx) {
     $b  = "査定のお申し込みが届きました。\n\n";
     $b .= "───── お客様情報 ─────\n";
-    $b .= "■ メール : {$ctx['email']}\n";
+    $b .= "■ メール : " . (isset($ctx['email']) ? $ctx['email'] : '') . "\n";
     if (!empty($ctx['customer_details'])) $b .= $ctx['customer_details'] . "\n";
     $b .= "\n───── 物件・ご状況 ─────\n";
-    $b .= $ctx['property_details'] . "\n";
+    $b .= (isset($ctx['property_details']) ? $ctx['property_details'] : '') . "\n";
     $b .= "\n───── 営業連絡について ─────\n";
     $b .= !empty($ctx['marketing'])
         ? "○ 営業案内メールの受け取りに同意いただいています。\n"
@@ -1170,11 +1181,10 @@ function fhs_settings_page() {
                 </td></tr>
             </table>
             <h4>フォームに自動表示される内容</h4>
-            <p class="description">下記はコードで固定されており、消せません（法令上必要なため）。</p>
+            <p class="description">下記はコードで固定されており、消せません（同意の取得に必要なため）。</p>
             <ul style="list-style:disc;margin-left:20px;max-width:860px">
                 <li>個人情報の利用目的（査定とご連絡のため）</li>
                 <li>同意チェック（プライバシーポリシー・免責事項へのリンク付き）</li>
-                <li>「お伝えする価格は査定価格であり、不動産鑑定士による鑑定評価ではない」旨</li>
                 <li>査定担当会社（会社名・所在地・サイト）※「査定担当会社」タブに入れた項目のみ</li>
             </ul>
             </div>
@@ -1193,9 +1203,9 @@ function fhs_settings_page() {
                         <span class="description">※会社名・電話などの署名は<strong>本文に書く必要はありません</strong>。「査定担当会社」タブの内容がメール末尾に自動で入ります（本文に書くと二重になるため、書かれていても取り除きます）。</span>
                     </p>
                     <p class="description" style="background:#f0f6fc;border-left:4px solid #2271b1;padding:10px 12px;margin-top:10px">
-                        <strong>メールの末尾には「査定担当会社の連絡先」と「鑑定評価ではない旨」が自動で付きます。</strong><br>
-                        連絡先は<a href="#" class="fhs-gotab" data-tab="company">査定担当会社</a>タブの内容です。
-                        鑑定評価との区別は法令上必要なため消せません。本文には<strong>ご案内したい内容だけ</strong>をお書きください。
+                        <strong>メールの末尾には「査定担当会社の連絡先」が自動で付きます。</strong><br>
+                        内容は<a href="#" class="fhs-gotab" data-tab="company">査定担当会社</a>タブのものです。
+                        本文には<strong>ご案内したい内容だけ</strong>をお書きください。
                     </p>
                 </td></tr>
                 <tr><th>到達確認</th><td>
@@ -1389,7 +1399,7 @@ function fhs_settings_page() {
 
             <h3 style="color:#b32d2e">法的な注意</h3>
             <p class="description" style="max-width:900px">
-                お伝えする価格は売却の参考となる<strong>査定価格</strong>であり、不動産鑑定士による<strong>「鑑定評価」ではありません</strong>。
+                
                 フォーム・メールの免責文でその旨を明示しています。<strong>この注記は受付完了メールと完了画面に自動で入ります（消せません）。</strong><br>
                 また、集めたお名前・電話番号を<strong>他社に渡す場合は「個人情報」タブの設定を必ずONにしてください</strong>（同意なしの第三者提供は違法です）。
                 公開前に弁護士等の確認を推奨します。
@@ -2101,7 +2111,6 @@ function fhs_shortcode($atts = array()) {
     @media(max-width:480px){.fhs-wrap .fhs-back{flex:0 0 38%;font-size:15px;padding:14px 8px}}
     .fhs-wrap button:hover{filter:brightness(.93)}
     .fhs-wrap button:disabled{opacity:.6;cursor:wait;filter:none}
-    .fhs-disc{background:#fff8e6;border:1px solid #f0e0a8;border-radius:10px;padding:15px 17px;font-size:14px;color:#6b5a12;margin-top:18px}
     /* ハニーポット：display:none だと一部のボットに読まれるため画面外へ逃がす */
     .fhs-hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}
     .fhs-privacy-note{background:#f6f8fa;border:1px solid var(--fhs-line);border-radius:9px;padding:13px 15px;font-size:14px;color:#4b5563;line-height:1.75;margin-top:16px}
@@ -2132,7 +2141,6 @@ function fhs_shortcode($atts = array()) {
     .fhs-design-compact .fhs-group{grid-template-columns:1fr} /* 幅が狭いので1カラム */
     .fhs-design-compact .fhs-section{display:none}
     .fhs-design-compact .fhs-check label{font-size:14px}
-    .fhs-design-compact .fhs-disc{font-size:12px;padding:10px 12px;margin-top:12px}
     .fhs-design-compact .fhs-lead{font-size:14px;padding:10px 12px}
     .fhs-design-compact .fhs-spec{font-size:15px}
     .fhs-design-compact .fhs-spec th,.fhs-design-compact .fhs-spec td{padding:9px 8px}
@@ -2800,8 +2808,7 @@ function fhs_shortcode($atts = array()) {
       + '営業時間の都合により、お時間をいただく場合があります。</div>'
       + '<table class="fhs-spec">'+rows+'</table>'
       + det
-      + mailLine
-      + '<div class="fhs-disc">お伝えする価格は売却の参考となる<strong>査定価格</strong>であり、不動産鑑定士による<strong>鑑定評価ではありません</strong>。実際の売却価格を保証するものではありません。</div>';
+      + mailLine;
     resultCard.innerHTML = html;
     formCard.style.display = 'none';
     resultCard.style.display = 'block';
