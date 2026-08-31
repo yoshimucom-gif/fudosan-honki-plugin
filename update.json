@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.14.1",
+  "version": "1.15.0",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.14.1\n・担当者への通知メールから「管理画面『訪問査定申込 → 申込一覧』からも確認できます。」の一文を削除"
+    "changelog": "1.15.0\n・物件種別の並び順を変えられるように（設定→入力項目→「物件種別の並び順」）。↑↓で並び替え、チェックを外すとその種別は非表示。地域によって扱う物件が違うため、多い種別を先頭に置けます\n・非表示にした種別では申し込みを受け付けません。すでに受け付けた申し込みは、非表示にしても申込一覧・CSVにそのまま残ります"
   }
 }

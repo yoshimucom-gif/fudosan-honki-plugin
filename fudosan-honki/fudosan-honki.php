@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.14.1
+ * Version: 1.15.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.14.1');
+define('FHS_VER', '1.15.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -538,6 +538,11 @@ function fhs_sanitize_options($in) {
         'teaser_tags'      => sanitize_text_field($in['teaser_tags'] ?? ''),
         'satei_page_id'    => (int) ($in['satei_page_id'] ?? 0),
         'address_example'  => sanitize_text_field($in['address_example'] ?? ''),
+        // 物件種別の並び順（表示するものだけを、その順で持つ）
+        'ptype_order'      => fhs_sanitize_ptype_order(
+            $in['ptype_order'] ?? '',
+            array_key_exists('ptype_show', $in) ? $in['ptype_show'] : (array_key_exists('ptype_order', $in) ? array() : null)
+        ),
         // 自動返信メール
         'mail_subject'     => sanitize_text_field($in['mail_subject'] ?? ''),
         'mail_body'        => sanitize_textarea_field($in['mail_body'] ?? ''),
@@ -566,6 +571,48 @@ function fhs_sanitize_options($in) {
  * 4. 物件種別の対応表
  * ======================================================================= */
 $GLOBALS['FHS_PTYPE_LABEL'] = array('mansion' => '中古マンション', 'house' => '中古一戸建て（土地＋建物）', 'land' => '土地');
+
+/**
+ * フォームに出す物件種別。設定した並び順で、表示するものだけを返す。
+ *
+ * ★FHS_PTYPE_LABEL の方は触らない。あちらは「この種別のラベルは何か」を引くための
+ *   マスタで、過去に受け付けた申し込みの表示（申込一覧・CSV・メール）に要る。
+ *   途中で種別を非表示にしても、それ以前の申し込みが読めなくならないようにする。
+ */
+function fhs_ptype_labels() {
+    $master = $GLOBALS['FHS_PTYPE_LABEL'];
+    $order  = trim(fhs_opt('ptype_order', ''));
+    if ($order === '') return $master;
+    $out = array();
+    foreach (explode(',', $order) as $k) {
+        $k = trim($k);
+        if (isset($master[$k]) && !isset($out[$k])) $out[$k] = $master[$k];
+    }
+    return $out ? $out : $master;   // 全部消えていたら既定に戻す（選べないフォームは壊れている）
+}
+
+/**
+ * 並び順の保存。表示する種別だけを、指定された順序で持つ。
+ * $order_raw … 並び順（全種別。JSが並び替えのたびに書き換える）
+ * $show_raw  … 表示するものにチェックが入った配列
+ */
+function fhs_sanitize_ptype_order($order_raw, $show_raw) {
+    $all   = array_keys($GLOBALS['FHS_PTYPE_LABEL']);
+    $order = array();
+    foreach (explode(',', (string) $order_raw) as $k) {
+        $k = trim($k);
+        if (in_array($k, $all, true) && !in_array($k, $order, true)) $order[] = $k;
+    }
+    foreach ($all as $k) if (!in_array($k, $order, true)) $order[] = $k;   // 漏れは末尾に足す
+
+    $show = is_array($show_raw) ? array_map('strval', $show_raw) : null;
+    if ($show === null) return implode(',', $order);   // 設定画面以外からの保存では絞り込まない
+
+    $out = array();
+    foreach ($order as $k) if (in_array($k, $show, true)) $out[] = $k;
+    if (!$out) $out = $all;   // 全部外されたら既定に戻す
+    return implode(',', $out);
+}
 
 /* =========================================================================
  * 5. 入力値の正規化・検証
@@ -1124,6 +1171,33 @@ function fhs_settings_page() {
                 足りない情報は担当者がお電話で聞く運用をおすすめします。<br>
                 ※ <strong>メールアドレス・物件種別・物件住所・同意チェック</strong>は常に必須です（連絡と査定に不可欠なため、切り替えできません）。
             </p>
+            <h4 style="margin-top:22px">物件種別の並び順</h4>
+            <p class="description" style="max-width:860px">
+                フォームの一番上に出る選択肢です。<strong>その地域で一番多い種別を先頭に</strong>してください。
+                扱わない種別はチェックを外すと表示されなくなります。<br>
+                ※すでに受け付けた申し込みは、非表示にしても申込一覧・CSVにそのまま残ります。
+            </p>
+            <?php
+            $pt_master  = $GLOBALS['FHS_PTYPE_LABEL'];
+            $pt_current = array_keys(fhs_ptype_labels());
+            $pt_hidden  = array_values(array_diff(array_keys($pt_master), $pt_current));
+            $pt_rows    = array_merge($pt_current, $pt_hidden);   // 表示中を上、隠しているものを下に
+            ?>
+            <ul id="fhs-ptorder" style="max-width:460px;margin:0 0 6px">
+<?php foreach ($pt_rows as $k): ?>
+              <li data-key="<?php echo esc_attr($k); ?>" style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:8px 10px;margin-bottom:6px">
+                <label style="flex:1;margin:0">
+                  <input type="checkbox" name="<?php echo FHS_OPT; ?>[ptype_show][]" value="<?php echo esc_attr($k); ?>" <?php checked(in_array($k, $pt_current, true)); ?>>
+                  <?php echo esc_html($pt_master[$k]); ?>
+                </label>
+                <button type="button" class="button fhs-pt-up" title="上へ">↑</button>
+                <button type="button" class="button fhs-pt-down" title="下へ">↓</button>
+              </li>
+<?php endforeach; ?>
+            </ul>
+            <input type="hidden" id="fhs-ptorder-val" name="<?php echo FHS_OPT; ?>[ptype_order]" value="<?php echo esc_attr(implode(',', $pt_rows)); ?>">
+            <p class="description">並び替えたら<strong>「変更を保存」</strong>を押してください。</p>
+
             <?php
             $groups = array(
                 'customer'  => array('お客様のご連絡先', 'お名前・電話番号は「本気の申し込み」を受けるための中心項目です。'),
@@ -1581,6 +1655,25 @@ function fhs_settings_page() {
                 showTab(t.getAttribute('data-tab'));
             });
         });
+        // 物件種別の並び替え
+        var ptList = document.getElementById('fhs-ptorder');
+        if (ptList) {
+            var ptVal = document.getElementById('fhs-ptorder-val');
+            var sync = function(){
+                ptVal.value = [].map.call(ptList.children, function(li){ return li.getAttribute('data-key'); }).join(',');
+            };
+            ptList.addEventListener('click', function(e){
+                var up = e.target.closest('.fhs-pt-up'), down = e.target.closest('.fhs-pt-down');
+                if (!up && !down) return;
+                e.preventDefault();
+                var li = e.target.closest('li');
+                if (up && li.previousElementSibling) ptList.insertBefore(li, li.previousElementSibling);
+                if (down && li.nextElementSibling) ptList.insertBefore(li.nextElementSibling, li);
+                sync();
+            });
+            sync();
+        }
+
         // テストメール。宛先をURLに残さないよう、リンクではなくPOSTで送る
         // （設定フォームの中に form を置けないので、押した時に組み立てる）
         var testBtn = document.getElementById('fhs-testsend');
@@ -1760,7 +1853,7 @@ function fhs_ajax() {
     if (!$agree) $errors[] = '個人情報の取扱いへの同意が必要です。';
     if (!is_email($email)) $errors[] = 'メールアドレスの形式が正しくありません。';
     if ($address === '') $errors[] = '物件の住所を入力してください。';
-    if (!isset($GLOBALS['FHS_PTYPE_LABEL'][$ptype])) $errors[] = '物件種別を選択してください。';
+    if (!isset(fhs_ptype_labels()[$ptype])) $errors[] = '物件種別を選択してください。';
 
     /**
      * スキーマ駆動で1グループぶんの入力を取得・検証する。
@@ -2056,7 +2149,7 @@ function fhs_shortcode($atts = array()) {
         : esc_html($tp_name);
 
     $ptype_options = '<option value="">選択してください</option>';
-    foreach ($GLOBALS['FHS_PTYPE_LABEL'] as $k => $v) {
+    foreach (fhs_ptype_labels() as $k => $v) {
         $ptype_options .= '<option value="' . esc_attr($k) . '">' . esc_html($v) . '</option>';
     }
 
@@ -2075,7 +2168,7 @@ function fhs_shortcode($atts = array()) {
     $render_ptype_tiles = function ($uid, $name = 'ptype') {
         ob_start(); ?>
         <div class="fhs-tiles" role="group">
-<?php foreach ($GLOBALS['FHS_PTYPE_LABEL'] as $k => $v):
+<?php foreach (fhs_ptype_labels() as $k => $v):
         $short = ($k === 'house') ? '一戸建て' : (($k === 'mansion') ? 'マンション' : '土地');
         $tid = $uid . '-tile-' . $k; ?>
           <input type="radio" name="<?php echo esc_attr($name); ?>" id="<?php echo esc_attr($tid); ?>" value="<?php echo esc_attr($k); ?>" class="fhs-tile-input">
