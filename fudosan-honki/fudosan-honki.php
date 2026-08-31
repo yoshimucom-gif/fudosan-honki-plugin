@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.13.0
+ * Version: 1.13.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.13.0');
+define('FHS_VER', '1.13.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -2082,7 +2082,8 @@ function fhs_shortcode($atts = array()) {
         $agree_label = $p . 'および' . $t . 'に同意します（必須）';
     }
     if ($tp) {
-        $agree_label = '上記の個人情報の取り扱い（' . $tp_label . 'への提供を含む）に同意し、' . $agree_label;
+        // 提供先は上の1行に書いてある。ここで繰り返すと同意文が長くなり読まれなくなる
+        $agree_label = '上記の個人情報の取り扱いと、' . $agree_label;   // 「同意し〜同意します」の重複を避ける
     }
 
     /** 物件種別のタイル選択（1タップで選べるようにする。セレクトより離脱が少ない） */
@@ -2221,6 +2222,12 @@ function fhs_shortcode($atts = array()) {
     /* ハニーポット：display:none だと一部のボットに読まれるため画面外へ逃がす */
     .fhs-hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}
     .fhs-privacy-note{background:#f6f8fa;border:1px solid var(--fhs-line);border-radius:9px;padding:13px 15px;font-size:14px;color:#4b5563;line-height:1.75;margin-top:16px}
+    .fhs-privacy-more{margin-top:6px}
+    .fhs-privacy-more>summary{cursor:pointer;color:var(--fhs-brand);font-size:13px;list-style:none;display:inline-flex;align-items:center;gap:4px}
+    .fhs-privacy-more>summary::-webkit-details-marker{display:none}
+    .fhs-privacy-more>summary::after{content:'▾';font-size:11px}
+    .fhs-privacy-more[open]>summary::after{content:'▴'}
+    .fhs-privacy-more>div{margin-top:8px;padding-top:8px;border-top:1px solid var(--fhs-line);font-size:13px}
     .fhs-operator{margin-top:18px;padding-top:16px;border-top:1px solid var(--fhs-line);font-size:14px;color:#4b5563;line-height:1.9}
     .fhs-operator-t{font-weight:700;color:var(--fhs-ink);margin-bottom:4px;font-size:15px}
     .fhs-operator span{display:inline-block;min-width:6.5em;padding-right:10px;color:var(--fhs-muted)}
@@ -2477,23 +2484,38 @@ function fhs_shortcode($atts = array()) {
       <?php /* 個人情報の利用目的の明示（個情法21条）。同意を求める直前に必ず出す。
                プライバシーポリシーURLが未設定でも、最低限ここで目的が伝わるようにしておく。
                第三者提供がONのときは、提供先と提供する旨を必ず書く（個情法27条）。 */ ?>
+      <?php /* ★ここは送信ボタンの直前。長い法律文を置くと読み手が意味を追えずに離脱する。
+               一括査定サイト（イエウール／HOME4U／すまいValue）も、フォーム周辺は
+               リンク1本で済ませている。
+               法的に要るのは利用目的の「公表」（21条＝ポリシーへの掲載で足りる）と、
+               第三者提供の「同意」（27条＝誰に渡るかが分かっていること）。
+               常時見せるのはその2点だけにして、残りは開いた人にだけ見せる。 */ ?>
       <div class="fhs-privacy-note">
-        <strong>個人情報の取り扱いについて</strong><br>
-<?php if ($tp && fhs_partner_is_other()): ?>
-        ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定のお申し込みの受付と、査定を行う会社へのお取次ぎ</strong>のために利用します。<br>
+<?php if ($tp): ?>
+        査定のため、<strong><?php echo $tp_label; ?></strong>にお名前・ご連絡先・物件情報をお渡しします。
 <?php else: ?>
-        ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定の実施とその結果のご連絡、およびそれに関するご案内</strong>のために利用します。<br>
+        いただいた情報は査定とご連絡のために使い、ご本人の同意なく他社へ渡すことはありません。
+<?php endif; ?>
+        <details class="fhs-privacy-more">
+          <summary>個人情報の取り扱いについて</summary>
+          <div>
+<?php if ($tp && fhs_partner_is_other()): ?>
+            ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定のお申し込みの受付と、査定を行う会社へのお取次ぎ</strong>のために利用します。<br>
+<?php else: ?>
+            ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定の実施とその結果のご連絡、およびそれに関するご案内</strong>のために利用します。<br>
 <?php endif; ?>
 <?php if ($tp): ?>
-        また、査定・ご提案のため、<strong><?php echo $tp_label; ?></strong>にご入力内容（お名前・ご連絡先・物件情報）を提供します。
-        提供先は<strong>査定の実施とその結果のご連絡</strong>のために利用します（提供先での取り扱いは、提供先の定めによります）。ご同意いただけない場合は、送信をお控えください。<br>
+            また、査定・ご提案のため、<strong><?php echo $tp_label; ?></strong>にご入力内容（お名前・ご連絡先・物件情報）を提供します。
+            提供先は<strong>査定の実施とその結果のご連絡</strong>のために利用します（提供先での取り扱いは、提供先の定めによります）。ご同意いただけない場合は、送信をお控えください。<br>
 <?php else: ?>
-        ご本人の同意なく第三者に提供することはありません。<br>
+            ご本人の同意なく第三者に提供することはありません。<br>
 <?php endif; ?>
-        削除をご希望の場合は、<?php echo (fhs_opt('operator_contact', '') !== '' && fhs_flag('show_contact', false))
-            ? '下記の連絡先'
-            : ($privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>に記載の窓口'
-                        : '当社の窓口'); ?>までお申し付けください。
+            削除をご希望の場合は、<?php echo (fhs_opt('operator_contact', '') !== '' && fhs_flag('show_contact', false))
+                ? '下記の連絡先'
+                : ($privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>に記載の窓口'
+                            : '当社の窓口'); ?>までお申し付けください。
+          </div>
+        </details>
       </div>
 
       <div class="fhs-check">
