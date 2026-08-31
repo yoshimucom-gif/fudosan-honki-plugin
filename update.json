@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.12.0\n・「鑑定評価ではありません」の注記を廃止（フォーム・完了画面・受付完了メールのすべて）。受付の時点では価格を提示していないため、断る対象がない。価格の説明は担当者が査定結果を伝える場面で行うもの\n・受付完了メールの末尾は査定担当会社の連絡先だけに\n・公開前チェックを会社情報（会社名・所在地・電話番号・会社サイトURL）まで拡大。空欄の項目はフォームにもメールにも出ないため"
+    "changelog": "1.12.1\n・通知先メールをカンマ区切りで複数指定できるように（担当者と管理者の両方に届かせたい場合など）。改行・全角カンマ・読点・スペース区切りも受け付け、形式の正しくないものは保存時に取り除く。宛先どうしにアドレスが見えないよう1通ずつ送信"
   }
 }

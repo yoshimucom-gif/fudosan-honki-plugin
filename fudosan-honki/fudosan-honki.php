@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.12.0
+ * Version: 1.12.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.12.0');
+define('FHS_VER', '1.12.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -464,6 +464,29 @@ add_action('admin_enqueue_scripts', function ($hook) {
     if (strpos($hook, 'fudosan-honki') !== false) wp_enqueue_media();
 });
 
+/**
+ * 複数のメールアドレスを受け取り、正しいものだけを「a@x, b@y」の形に整える。
+ * 区切りはカンマ・全角カンマ・読点・改行・スペースのいずれでもよい
+ * （コピー&ペーストでどれが混ざっても通るようにする）。
+ * 重複は落とす。1件も残らなければ空文字を返す。
+ */
+function fhs_sanitize_email_list($v) {
+    $parts = preg_split('/[,\x{FF0C}\x{3001}\s]+/u', (string) $v);
+    if (!is_array($parts)) return '';
+    $out = array();
+    foreach ($parts as $p) {
+        $p = sanitize_email(trim($p));
+        if ($p !== '' && is_email($p) && !in_array($p, $out, true)) $out[] = $p;
+    }
+    return implode(', ', $out);
+}
+
+/** 保存済みの通知先を、wp_mail に渡せる配列にする */
+function fhs_notify_recipients($raw) {
+    $list = array_filter(array_map('trim', explode(',', (string) $raw)), 'strlen');
+    return array_values($list);
+}
+
 function fhs_sanitize_options($in) {
     if (!is_array($in)) $in = array();
     $out = array(
@@ -474,7 +497,7 @@ function fhs_sanitize_options($in) {
         'operator_email'   => sanitize_email($in['operator_email'] ?? ''),
         'operator_url'     => esc_url_raw($in['operator_url'] ?? ''),
         'from_email'       => sanitize_email($in['from_email'] ?? ''),
-        'notify_email'     => sanitize_email($in['notify_email'] ?? ''),
+        'notify_email'     => fhs_sanitize_email_list($in['notify_email'] ?? ''),
         'privacy_url'      => esc_url_raw($in['privacy_url'] ?? ''),
         'terms_url'        => esc_url_raw($in['terms_url'] ?? ''),
         // チェックボックス（未送信＝OFF。'' ではなく明示的に '0' を入れて区別する）
@@ -973,9 +996,13 @@ function fhs_settings_page() {
                 <tr><th>送信元メール</th><td><input type="email" name="<?php echo FHS_OPT; ?>[from_email]" value="<?php echo esc_attr(fhs_opt('from_email')); ?>" size="40" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                     <p class="description">お客様への受付完了メールの差出人。空欄ならWordPressの既定の差出人になります。到達率のため WP Mail SMTP 等で SPF/DKIM を設定してください。</p></td></tr>
                 <tr><th>通知先メール（担当者）</th><td>
-                    <input type="email" name="<?php echo FHS_OPT; ?>[notify_email]" value="<?php echo esc_attr(fhs_opt('notify_email')); ?>" size="40"><br>
+                    <input type="email" multiple name="<?php echo FHS_OPT; ?>[notify_email]" value="<?php echo esc_attr(fhs_opt('notify_email')); ?>" size="60" placeholder="tanto@example.com, info@example.com"><br>
                     <label style="display:inline-block;margin-top:8px"><input type="checkbox" name="<?php echo FHS_OPT; ?>[notify_on]" value="1" <?php checked(fhs_flag('notify_on', true)); ?>> 申し込みが届いたら通知する</label>
-                    <p class="description">空欄なら送信元メール（無ければ管理者アドレス）に通知します。<strong>本気度の高いお客様なので、通知は必ずONを推奨します。</strong></p></td></tr>
+                    <p class="description">
+                        <strong>カンマ区切りで複数指定できます</strong>（担当者と管理者の両方に届かせたい場合など）。改行区切りでも構いません。<br>
+                        保存すると「a@example.com, b@example.com」の形に整えられ、<strong>形式の正しくないものは取り除かれます</strong>（保存後の欄でご確認ください）。<br>
+                        空欄なら送信元メール（無ければ管理者アドレス）に通知します。<strong>本気度の高いお客様なので、通知は必ずONを推奨します。</strong>
+                    </p></td></tr>
                 <tr><th>フォーム冒頭の案内文</th><td>
                     <textarea name="<?php echo FHS_OPT; ?>[lead_text]" rows="3" style="width:100%;max-width:760px"><?php echo esc_textarea(fhs_opt('lead_text')); ?></textarea>
                     <p class="description">フォームの一番上に表示される案内文（任意）。例：「担当者が実際に物件を確認し、根拠のある価格をご提示します。まずはお気軽にお申し込みください。」</p></td></tr>
@@ -1833,10 +1860,13 @@ function fhs_ajax() {
 
     // 担当者通知
     if (fhs_flag('notify_on', true)) {
-        $notify = fhs_opt('notify_email', $from ?: get_option('admin_email'));
+        $notify = fhs_notify_recipients(fhs_opt('notify_email', $from ?: get_option('admin_email')));
         if ($notify) {
             $subj = '【査定申込】' . ($ctx['name'] !== '' ? $ctx['name'] . '様 / ' : '') . $label . ' / ' . $address;
-            wp_mail($notify, $subj, fhs_admin_notify_body($ctx), $headers);
+            // 宛先が複数でも、お互いのアドレスが見えないよう1通ずつ送る
+            foreach ($notify as $to) {
+                wp_mail($to, $subj, fhs_admin_notify_body($ctx), $headers);
+            }
         }
     }
 
