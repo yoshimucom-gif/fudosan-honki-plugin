@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.13.1
+ * Version: 1.14.0
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.13.1');
+define('FHS_VER', '1.14.0');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -424,30 +424,13 @@ function fhs_site_is_https() {
     return strpos(strtolower((string) home_url()), 'https://') === 0;
 }
 
-/**
- * 運営会社と査定担当会社が別なのに第三者提供がOFFなら、
- * 同意を取らずに他社へ渡していることになる（個情法27条違反）。
- * これは黄色い注意ではなく赤で出す。
- */
-add_action('admin_notices', function () {
-    if (!current_user_can('manage_options')) return;
-    if (!fhs_partner_is_other()) return;
-    if (fhs_flag('third_party', false)) return;
-    echo '<div class="notice notice-error"><p><strong>【訪問査定申込】第三者提供の同意がオフのままです。</strong><br>'
-       . '運営会社（' . esc_html(fhs_opt('owner_name', '')) . '）と査定担当会社（'
-       . esc_html(fhs_opt('operator_name', '')) . '）が別の会社になっています。'
-       . 'お客様の情報を査定担当会社へ渡すなら、<strong>「個人情報」タブの第三者提供をONにしてください</strong>。'
-       . '同意を得ずに他社へ渡すことは個人情報保護法27条に違反します。</p></div>';
-});
-
 /* 公開前チェック。お客様に見える信頼性の材料が抜けたまま公開されるのを防ぐ */
 add_action('admin_notices', function () {
     if (!current_user_can('manage_options')) return;
     // 「査定担当会社」タブの項目。ここが空だと、フォームにも受付完了メールにも
     // その行が出ない＝お客様は連絡先の分からない相手に自宅と電話番号を渡すことになる
     $co = array();
-    if (fhs_opt('owner_name', '')       === '') $co[] = '運営会社名';
-    if (fhs_opt('operator_name', '')    === '') $co[] = '会社名（査定担当会社）';
+    if (fhs_opt('operator_name', '')    === '') $co[] = '会社名';
     if (fhs_opt('operator_address', '') === '') $co[] = '所在地';
     if (fhs_opt('operator_contact', '') === '') $co[] = '電話番号';
     if (fhs_opt('operator_url', '')     === '') $co[] = '会社サイトURL';
@@ -455,7 +438,7 @@ add_action('admin_notices', function () {
     if (fhs_opt('privacy_url', '') === '') $miss[] = 'プライバシーポリシーURL';
     if (!$co && !$miss) return;
     $parts = array();
-    if ($co)    $parts[] = '「会社情報」タブ：' . implode(' / ', $co);
+    if ($co)    $parts[] = '「査定担当会社」タブ：' . implode(' / ', $co);
     if ($miss)  $parts[] = '「基本設定」タブ：' . implode(' / ', $miss);
     echo '<div class="notice notice-warning"><p><strong>【訪問査定申込】公開前に未設定の項目があります</strong><br>'
        . esc_html(implode('　', $parts)) . '<br>'
@@ -488,34 +471,19 @@ add_action('admin_enqueue_scripts', function ($hook) {
  * 重複は落とす。1件も残らなければ空文字を返す。
  */
 /**
- * フォームの利用目的文の主語＝個人情報を取得する主体＝サイト運営者。
- * 未設定なら査定担当会社で代替する（会社が1社しかない構成のため。
- * 以前のバージョンから引き継いだ環境もここに落ちる）。
- */
-function fhs_owner_name() {
-    $v = fhs_opt('owner_name', '');
-    if ($v === '') $v = fhs_opt('operator_name', '');
-    return $v !== '' ? $v : '当社';
-}
-
-/** 運営者と査定担当会社が別の会社か（＝第三者提供が起きる構成か） */
-function fhs_partner_is_other() {
-    $owner = trim(fhs_opt('owner_name', ''));
-    $partner = trim(fhs_opt('operator_name', ''));
-    return ($owner !== '' && $partner !== '' && $owner !== $partner);
-}
-
-/**
  * 第三者提供の提供先の名前。
  * 「提供先の説明」が空でも、査定担当会社が別会社ならその社名を出す。
  * お客様にとっては「どこに渡るか」が分かることが大事で、
  * 「当社が提携する不動産会社」という一般名詞だけでは判断材料にならない。
  */
 function fhs_partner_label_text() {
-    $v = fhs_opt('third_party_name', '');
+    $v = trim(fhs_opt('third_party_name', ''));
     if ($v !== '') return $v;
-    if (fhs_partner_is_other()) return fhs_opt('operator_name', '');
-    return '当社が提携する不動産会社';
+    // ★必ず実名を出す。「当社が提携する不動産会社」では、
+    //   どこに自宅と連絡先が渡るのか読み手が判断できず、同意として成り立たない。
+    $p = trim(fhs_opt('operator_name', ''));
+    if ($p !== '') return $p;
+    return '査定を行う不動産会社';
 }
 
 function fhs_sanitize_email_list($v) {
@@ -539,11 +507,7 @@ function fhs_sanitize_options($in) {
     if (!is_array($in)) $in = array();
     $out = array(
         'site_name'        => sanitize_text_field($in['site_name'] ?? '不動産査定'),
-        // サイト運営者＝個人情報を取得する主体。フォームの利用目的文の主語になる
-        'owner_name'       => sanitize_text_field($in['owner_name'] ?? ''),
-        'owner_address'    => sanitize_text_field($in['owner_address'] ?? ''),
-        'owner_url'        => esc_url_raw($in['owner_url'] ?? ''),
-        // 査定担当会社＝実際に査定を行う会社。運営者と別なら第三者提供の提供先になる
+        // 査定担当会社＝実際に査定を行う会社。フォームとメールに出る唯一の会社
         'operator_name'    => sanitize_text_field($in['operator_name'] ?? ''),
         'operator_contact' => sanitize_text_field($in['operator_contact'] ?? ''),
         'operator_address' => sanitize_text_field($in['operator_address'] ?? ''),
@@ -905,11 +869,22 @@ function fhs_latest_version() {
 }
 
 /* テストメール送信（迷惑メール判定・文面の確認用） */
+/**
+ * テストメールの宛先。指定があればそこへ、無ければログイン中のユーザー宛。
+ * 壊れた値は黙って捨てて自分宛てに戻す（送信そのものが失敗するより、
+ * 手元に届いて「宛先が違う」と気づける方がよい）。
+ */
+function fhs_test_mail_to($posted) {
+    $to = sanitize_email(trim((string) $posted));
+    if ($to === '' || !is_email($to)) $to = wp_get_current_user()->user_email;
+    return $to;
+}
+
 add_action('admin_post_fhs_test_mail', 'fhs_test_mail');
 function fhs_test_mail() {
     if (!current_user_can('manage_options')) wp_die('権限がありません');
     check_admin_referer('fhs_test_mail');
-    $to = wp_get_current_user()->user_email;
+    $to = fhs_test_mail_to(isset($_POST['to']) ? wp_unslash($_POST['to']) : '');
     // サンプルの住所も、設定に合わせた入力例から作る（東京固定だと不自然なため）
     $sample_addr = trim(str_replace('例：', '', fhs_address_placeholder()));
     $ctx = array(
@@ -923,7 +898,10 @@ function fhs_test_mail() {
     $from = fhs_opt('from_email'); $site = fhs_opt('site_name', '不動産査定');
     if ($from) $headers[] = 'From: ' . $site . ' <' . $from . '>';
     $ok = wp_mail($to, '[テスト] ' . fhs_mail_subject(), fhs_mail_body($ctx), $headers);
-    wp_safe_redirect(admin_url('admin.php?page=fudosan-honki&testmail=' . ($ok ? '1' : '0') . '&to=' . rawurlencode($to)));
+    // ★宛先はURLに載せない。ブラウザの履歴や外部サイトへのリファラに残るため。
+    //   結果表示のあいだだけ、この管理者ぶんを控えておく
+    set_transient('fhs_testmail_to_' . get_current_user_id(), $to, 60);
+    wp_safe_redirect(admin_url('admin.php?page=fudosan-honki&testmail=' . ($ok ? '1' : '0')));
     exit;
 }
 
@@ -990,7 +968,8 @@ function fhs_settings_page() {
         <h1>訪問査定申込（本気査定） 設定</h1>
         <?php if (isset($_GET['testmail'])) {
             $tm_ok = ($_GET['testmail'] === '1');
-            $tm_to = isset($_GET['to']) ? sanitize_email(wp_unslash($_GET['to'])) : '';
+            $tm_to = (string) get_transient('fhs_testmail_to_' . get_current_user_id());
+            delete_transient('fhs_testmail_to_' . get_current_user_id());
             echo '<div class="notice notice-' . ($tm_ok ? 'success' : 'error') . '"><p>' .
                 ($tm_ok
                     ? 'テストメールを <strong>' . esc_html($tm_to) . '</strong> に送信しました。届かない場合は<strong>迷惑メールフォルダ</strong>も確認してください（届かない＝SPF/DKIM未設定の可能性大）。'
@@ -1024,7 +1003,7 @@ function fhs_settings_page() {
         </p>
         <h2 class="nav-tab-wrapper" id="fhs-tabs">
             <a href="#" class="nav-tab nav-tab-active" data-tab="basic">基本設定</a>
-            <a href="#" class="nav-tab" data-tab="company">会社情報</a>
+            <a href="#" class="nav-tab" data-tab="company">査定担当会社</a>
             <a href="#" class="nav-tab" data-tab="fields">入力項目</a>
             <a href="#" class="nav-tab" data-tab="privacy">個人情報</a>
             <a href="#" class="nav-tab" data-tab="mail">自動返信メール</a>
@@ -1091,30 +1070,7 @@ function fhs_settings_page() {
             </table>
             </div>
 <div class="fhs-tabpanel" data-tab="company" style="display:none">
-            <p class="description" style="max-width:900px;background:#f0f6fc;border-left:4px solid #2271b1;padding:12px 14px">
-                <strong>会社は2つに分かれています。</strong><br>
-                <strong>サイト運営者</strong>＝このサイトを運営し、<strong>お客様の情報を受け取る会社</strong>。フォームの「〇〇が利用します」の主語になります。<br>
-                <strong>査定担当会社</strong>＝実際に<strong>査定を行う会社</strong>。フォーム下部の会社欄と受付完了メールの末尾に出ます。<br>
-                自社で査定まで行う場合は<strong>両方に同じ会社</strong>を入れてください。別会社なら、その違いがそのままお客様への説明文に反映されます
-                （「運営者が受け付け、査定担当会社へお取次ぎします」という書き方に変わります）。
-            </p>
-
-            <h3>サイト運営者</h3>
-            <p class="description" style="max-width:900px">
-                お客様の個人情報を<strong>受け取る主体</strong>です。利用目的を伝える相手として、フォームの説明文に名前が出ます。
-                プライバシーポリシーの主体も、この会社になります。
-            </p>
-            <table class="form-table">
-                <tr><th>運営会社名</th><td><input type="text" name="<?php echo FHS_OPT; ?>[owner_name]" value="<?php echo esc_attr(fhs_opt('owner_name')); ?>" size="40" placeholder="例：ミカタ株式会社">
-                    <p class="description">
-                        フォームの「ご入力いただいた内容は、<strong>◯◯</strong>が…のために利用します」に入ります。<br>
-                        空欄のときは下の「査定担当会社」の会社名で代用します（1社で運営・査定まで行う構成向け）。
-                    </p></td></tr>
-                <tr><th>運営会社の所在地</th><td><input type="text" name="<?php echo FHS_OPT; ?>[owner_address]" value="<?php echo esc_attr(fhs_opt('owner_address')); ?>" size="50" placeholder="例：岡山県岡山市北区○○1-2-3"></td></tr>
-                <tr><th>運営会社のサイトURL</th><td><input type="url" name="<?php echo FHS_OPT; ?>[owner_url]" value="<?php echo esc_attr(fhs_opt('owner_url')); ?>" size="50" placeholder="https://example.com/"></td></tr>
-            </table>
-
-            <h3 style="margin-top:28px">査定担当会社</h3>
+            <h3>査定担当会社</h3>
             <p class="description" style="max-width:900px">
                 実際に<strong>査定を行う会社</strong>です。ここに入れた内容が、<strong>フォーム下部の「査定担当会社」の欄</strong>と
                 <strong>受付完了メールの末尾</strong>に表示されます。<br>
@@ -1268,8 +1224,13 @@ function fhs_settings_page() {
                     </p>
                 </td></tr>
                 <tr><th>提供先の説明</th><td>
-                    <input type="text" name="<?php echo FHS_OPT; ?>[third_party_name]" value="<?php echo esc_attr(fhs_opt('third_party_name')); ?>" size="60" placeholder="例：当社が提携する不動産会社（お住まいの地域を担当する1〜3社）">
-                    <p class="description">上をONにしたときにフォームへ表示されます。<strong>具体的に書くほど信頼されます。</strong>空欄なら「当社が提携する不動産会社」と表示します。</p>
+                    <input type="text" name="<?php echo FHS_OPT; ?>[third_party_name]" value="<?php echo esc_attr(fhs_opt('third_party_name')); ?>" size="60" placeholder="例：お住まいの地域を担当する提携不動産会社1〜3社">
+                    <p class="description">
+                        <strong>ふつうは空欄で構いません。</strong>空欄なら「査定担当会社」の会社名（<?php echo esc_html(fhs_opt('operator_name', '') ?: '未設定'); ?>）がそのまま表示されます。<br>
+                        提携先が複数あって1社に決まらない場合だけ、ここに書いてください。
+                        ただし<strong>「当社が提携する不動産会社」のような書き方は避けてください</strong>。
+                        お客様は「どこに自宅と連絡先が渡るのか」を判断できず、同意した意味がなくなります。
+                    </p>
                 </td></tr>
                 <tr><th>提供先を説明したページ</th><td>
                     <input type="url" name="<?php echo FHS_OPT; ?>[third_party_url]" value="<?php echo esc_attr(fhs_opt('third_party_url')); ?>" size="60" placeholder="https://example.com/partners/">
@@ -1313,8 +1274,13 @@ function fhs_settings_page() {
                     </p>
                 </td></tr>
                 <tr><th>到達確認</th><td>
-                    <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=fhs_test_mail'), 'fhs_test_mail')); ?>" class="button">テストメールを自分宛に送信</a>
+                    <input type="email" id="fhs-testto" size="34" placeholder="<?php echo esc_attr(wp_get_current_user()->user_email); ?>">
+                    <button type="button" class="button" id="fhs-testsend"
+                        data-url="<?php echo esc_url(admin_url('admin-post.php')); ?>"
+                        data-nonce="<?php echo esc_attr(wp_create_nonce('fhs_test_mail')); ?>">テストメールを送信</button>
                     <p class="description">
+                        <strong>空欄なら自分宛て</strong>（<?php echo esc_html(wp_get_current_user()->user_email); ?>）に送ります。
+                        Gmailや携帯キャリアなど、<strong>お客様が実際に使うアドレス</strong>を入れて届き方を確かめてください。<br>
                         現在の件名・本文テンプレートでサンプルを送ります（保存してから押してください）。<br>
                         <strong>迷惑メールに入る場合</strong>は「WP Mail SMTP」等でSMTP送信にし、送信ドメインの <code>SPF</code> / <code>DKIM</code> / <code>DMARC</code> を設定してください。
                     </p>
@@ -1616,6 +1582,27 @@ function fhs_settings_page() {
                 showTab(t.getAttribute('data-tab'));
             });
         });
+        // テストメール。宛先をURLに残さないよう、リンクではなくPOSTで送る
+        // （設定フォームの中に form を置けないので、押した時に組み立てる）
+        var testBtn = document.getElementById('fhs-testsend');
+        if (testBtn) testBtn.addEventListener('click', function(){
+            var f = document.createElement('form');
+            f.method = 'post';
+            f.action = testBtn.getAttribute('data-url');
+            var vals = {
+                action: 'fhs_test_mail',
+                _wpnonce: testBtn.getAttribute('data-nonce'),
+                to: (document.getElementById('fhs-testto') || {}).value || ''
+            };
+            Object.keys(vals).forEach(function(k){
+                var i = document.createElement('input');
+                i.type = 'hidden'; i.name = k; i.value = vals[k];
+                f.appendChild(i);
+            });
+            document.body.appendChild(f);
+            f.submit();
+        });
+
         // 説明文の中から別タブへ飛ぶリンク
         document.querySelectorAll('.fhs-gotab').forEach(function(a){
             a.addEventListener('click', function(e){
@@ -2068,23 +2055,22 @@ function fhs_shortcode($atts = array()) {
     $tp_label = $tp_url
         ? '<a href="' . esc_url($tp_url) . '" target="_blank" rel="noopener">' . esc_html($tp_name) . '</a>'
         : esc_html($tp_name);
-    $op_name = fhs_owner_name();   // 利用目的文の主語＝取得する主体＝サイト運営者
 
     $ptype_options = '<option value="">選択してください</option>';
     foreach ($GLOBALS['FHS_PTYPE_LABEL'] as $k => $v) {
         $ptype_options .= '<option value="' . esc_attr($k) . '">' . esc_html($v) . '</option>';
     }
 
-    $agree_label = 'プライバシーポリシーおよび免責事項に同意します（必須）';
-    if ($privacy || $terms) {
-        $p = $privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>' : 'プライバシーポリシー';
-        $t = $terms ? '<a href="' . esc_url($terms) . '" target="_blank" rel="noopener">免責事項</a>' : '免責事項';
-        $agree_label = $p . 'および' . $t . 'に同意します（必須）';
-    }
-    if ($tp) {
-        // 提供先は上の1行に書いてある。ここで繰り返すと同意文が長くなり読まれなくなる
-        $agree_label = '上記の個人情報の取り扱いと、' . $agree_label;   // 「同意し〜同意します」の重複を避ける
-    }
+    /* ★フォームに個人情報の説明文は置かない。会社の関係を説明しようとすると
+         画面に会社が2つ並び、読み手は「どっちがどっち」を考えることになって手が止まる。
+         利用目的は公表（プライバシーポリシー）で足りる（21条）。
+         同意が要るのは第三者提供（27条）だけなので、それをこの1行で成立させる。
+         ＝提供先の社名をここに出す。「当社が提携する〜」では誰に渡るか分からず同意にならない。 */
+    $p = $privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>' : 'プライバシーポリシー';
+    $t = $terms   ? '<a href="' . esc_url($terms)   . '" target="_blank" rel="noopener">免責事項</a>'         : '免責事項';
+    $agree_label = $tp
+        ? '<strong>' . $tp_label . '</strong>への情報提供と、' . $p . '・' . $t . 'に同意します（必須）'
+        : $p . 'および' . $t . 'に同意します（必須）';
 
     /** 物件種別のタイル選択（1タップで選べるようにする。セレクトより離脱が少ない） */
     $render_ptype_tiles = function ($uid, $name = 'ptype') {
@@ -2221,13 +2207,6 @@ function fhs_shortcode($atts = array()) {
     .fhs-wrap button:disabled{opacity:.6;cursor:wait;filter:none}
     /* ハニーポット：display:none だと一部のボットに読まれるため画面外へ逃がす */
     .fhs-hp{position:absolute!important;left:-9999px!important;top:auto;width:1px;height:1px;overflow:hidden}
-    .fhs-privacy-note{background:#f6f8fa;border:1px solid var(--fhs-line);border-radius:9px;padding:13px 15px;font-size:14px;color:#4b5563;line-height:1.75;margin-top:16px}
-    .fhs-privacy-more{margin-top:6px}
-    .fhs-privacy-more>summary{cursor:pointer;color:var(--fhs-brand);font-size:13px;list-style:none;display:inline-flex;align-items:center;gap:4px}
-    .fhs-privacy-more>summary::-webkit-details-marker{display:none}
-    .fhs-privacy-more>summary::after{content:'▾';font-size:11px}
-    .fhs-privacy-more[open]>summary::after{content:'▴'}
-    .fhs-privacy-more>div{margin-top:8px;padding-top:8px;border-top:1px solid var(--fhs-line);font-size:13px}
     .fhs-operator{margin-top:18px;padding-top:16px;border-top:1px solid var(--fhs-line);font-size:14px;color:#4b5563;line-height:1.9}
     .fhs-operator-t{font-weight:700;color:var(--fhs-ink);margin-bottom:4px;font-size:15px}
     .fhs-operator span{display:inline-block;min-width:6.5em;padding-right:10px;color:var(--fhs-muted)}
@@ -2484,39 +2463,6 @@ function fhs_shortcode($atts = array()) {
       <?php /* 個人情報の利用目的の明示（個情法21条）。同意を求める直前に必ず出す。
                プライバシーポリシーURLが未設定でも、最低限ここで目的が伝わるようにしておく。
                第三者提供がONのときは、提供先と提供する旨を必ず書く（個情法27条）。 */ ?>
-      <?php /* ★ここは送信ボタンの直前。長い法律文を置くと読み手が意味を追えずに離脱する。
-               一括査定サイト（イエウール／HOME4U／すまいValue）も、フォーム周辺は
-               リンク1本で済ませている。
-               法的に要るのは利用目的の「公表」（21条＝ポリシーへの掲載で足りる）と、
-               第三者提供の「同意」（27条＝誰に渡るかが分かっていること）。
-               常時見せるのはその2点だけにして、残りは開いた人にだけ見せる。 */ ?>
-      <div class="fhs-privacy-note">
-<?php if ($tp): ?>
-        査定のため、<strong><?php echo $tp_label; ?></strong>にお名前・ご連絡先・物件情報をお渡しします。
-<?php else: ?>
-        いただいた情報は査定とご連絡のために使い、ご本人の同意なく他社へ渡すことはありません。
-<?php endif; ?>
-        <details class="fhs-privacy-more">
-          <summary>個人情報の取り扱いについて</summary>
-          <div>
-<?php if ($tp && fhs_partner_is_other()): ?>
-            ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定のお申し込みの受付と、査定を行う会社へのお取次ぎ</strong>のために利用します。<br>
-<?php else: ?>
-            ご入力いただいた内容は、<?php echo esc_html($op_name); ?>が<strong>査定の実施とその結果のご連絡、およびそれに関するご案内</strong>のために利用します。<br>
-<?php endif; ?>
-<?php if ($tp): ?>
-            また、査定・ご提案のため、<strong><?php echo $tp_label; ?></strong>にご入力内容（お名前・ご連絡先・物件情報）を提供します。
-            提供先は<strong>査定の実施とその結果のご連絡</strong>のために利用します（提供先での取り扱いは、提供先の定めによります）。ご同意いただけない場合は、送信をお控えください。<br>
-<?php else: ?>
-            ご本人の同意なく第三者に提供することはありません。<br>
-<?php endif; ?>
-            削除をご希望の場合は、<?php echo (fhs_opt('operator_contact', '') !== '' && fhs_flag('show_contact', false))
-                ? '下記の連絡先'
-                : ($privacy ? '<a href="' . esc_url($privacy) . '" target="_blank" rel="noopener">プライバシーポリシー</a>に記載の窓口'
-                            : '当社の窓口'); ?>までお申し付けください。
-          </div>
-        </details>
-      </div>
 
       <div class="fhs-check">
         <input type="checkbox" name="agree" id="<?php echo esc_attr($uid . '-agree'); ?>" value="1" required>
