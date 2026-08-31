@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.15.0
+ * Version: 1.15.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.15.0');
+define('FHS_VER', '1.15.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -1275,7 +1275,13 @@ function fhs_settings_page() {
             <h4 style="margin:26px 0 6px">そのほかの欄</h4>
             <table class="form-table"><tr><th>表示する項目</th><td>
                 <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_note]" value="1" <?php checked(fhs_flag('show_note', true)); ?>> 「備考・ご要望」の自由入力欄</label><br>
-                <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_marketing]" value="1" <?php checked(fhs_flag('show_marketing', true)); ?>> 「営業案内メールを希望」チェック欄</label>
+                <label><input type="checkbox" name="<?php echo FHS_OPT; ?>[show_marketing]" value="1" <?php checked(fhs_flag('show_marketing', false)); ?>> 「営業案内メールを希望」チェック欄</label>
+                    <p class="description" style="margin:4px 0 12px 24px">
+                        <strong>メルマガ等の営業メールを送らないなら、オフのままにしてください。</strong>
+                        チェック欄が2つ並ぶと読み手の手が止まり、申し込みが減ります。<br>
+                        査定結果のご連絡は、この欄が無くても送れます（取引に基づく通知のため）。
+                        同意が要るのは<strong>広告宣伝メールを送る場合だけ</strong>です（特定電子メール法）。
+                    </p>
                 <p class="description">営業案内メールのチェックは<strong>同意の証拠</strong>になります（特定電子メール法）。オフにすると、今回の申し込み以外の営業メールは送れません。</p>
             </td></tr></table>
             </div>
@@ -1293,7 +1299,10 @@ function fhs_settings_page() {
                     <p class="description">
                         <strong>ONにすると</strong>、フォームの利用目的と同意文に「提携先へ提供すること」が明記され、
                         お客様の同意チェックがその同意を兼ねる形になります。<br>
-                        <strong>OFFのまま他社に渡すのは違法です。</strong>自社内だけで対応する場合はOFFのままにしてください。
+                        <strong>OFFにする場合は、プライバシーポリシーに「提携する不動産会社へ提供する旨と提供する項目」を必ず明記してください。</strong>
+                        ポリシーへの同意チェックが、その提供の同意を兼ねる形になります。<br>
+                        自社内だけで対応する（他社に渡さない）場合も、OFFのままで構いません。<br>
+                        <strong>どこにも同意の根拠が無いまま他社へ渡すことだけは避けてください</strong>（個人情報保護法27条）。
                     </p>
                 </td></tr>
                 <tr><th>提供先の説明</th><td>
@@ -1847,7 +1856,7 @@ function fhs_ajax() {
     $email   = sanitize_email($_POST['email'] ?? '');
     $note    = fhs_flag('show_note', true) ? sanitize_textarea_field($_POST['note_text'] ?? '') : '';
     $agree   = !empty($_POST['agree']);
-    $mkt     = fhs_flag('show_marketing', true) && !empty($_POST['marketing']);
+    $mkt     = fhs_flag('show_marketing', false) && !empty($_POST['marketing']);
 
     $errors = array();
     if (!$agree) $errors[] = '個人情報の取扱いへの同意が必要です。';
@@ -2129,7 +2138,7 @@ function fhs_shortcode($atts = array()) {
     $cust_fields = fhs_visible_fields('customer',  fhs_customer_fields(),  $compact);
     $situ_fields = fhs_visible_fields('situation', fhs_situation_fields(), $compact);
     $show_note   = fhs_flag('show_note', true) && !$compact;
-    $show_mkt    = fhs_flag('show_marketing', true) && !$compact;
+    $show_mkt    = fhs_flag('show_marketing', false) && !$compact;
 
     /* ステップ表示。一画面に20項目並ぶと身構えられるので、
        「物件 → ご状況 → ご連絡先」の順に小分けにする（個人情報は必ず最後）。
