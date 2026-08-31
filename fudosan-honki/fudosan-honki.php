@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 不動産 訪問査定申込（本気査定）
  * Description: 売却を本気で検討している方向けの査定申込フォーム。お名前・電話番号まで受け取り、受付完了メールを自動返信＋担当者に通知します。査定額の自動表示は行わず、担当者が個別に査定してご連絡する形です。入力項目は1つずつ「必須／任意／非表示」を選べます。ショートコード [fudosan_honki] をページに貼るだけ。
- * Version: 1.14.0
+ * Version: 1.14.1
  * Author: (運営者)
  * License: GPLv2 or later
  * Text Domain: fudosan-honki
@@ -18,7 +18,7 @@
 
 if (!defined('ABSPATH')) exit; // 直接アクセス禁止
 
-define('FHS_VER', '1.14.0');
+define('FHS_VER', '1.14.1');
 define('FHS_OPT', 'fudosan_honki_options');
 
 /**
@@ -837,7 +837,6 @@ function fhs_admin_notify_body($ctx) {
     $b .= !empty($ctx['marketing'])
         ? "○ 営業案内メールの受け取りに同意いただいています。\n"
         : "× 営業案内メールの受け取りには同意されていません。\n  今回のお申し込みへのご対応以外の営業メールは送らないでください（特定電子メール法）。\n";
-    $b .= "\n管理画面「訪問査定申込 → 申込一覧」からも確認できます。";
     return $b;
 }
 

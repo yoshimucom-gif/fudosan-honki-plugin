@@ -1,6 +1,6 @@
 {
   "name": "不動産 訪問査定申込（本気査定）",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "download_url": "https://raw.githubusercontent.com/yoshimucom-gif/fudosan-honki-plugin/main/fudosan-honki.zip",
   "requires": "5.8",
   "tested": "6.7",
@@ -8,6 +8,6 @@
   "author": "ミカタ株式会社",
   "homepage": "https://github.com/yoshimucom-gif/fudosan-honki-plugin",
   "sections": {
-    "changelog": "1.14.0\n・フォームから個人情報の説明文を削除。同意チェック1行に集約（会社を2つ見せると読み手が「どっちがどっち」を考えることになり、申し込みの手が止まるため）\n・同意チェックに提供先の会社名を明記。「当社が提携する不動産会社」のような一般名詞はどこにも出しません\n・v1.13.0で追加したサイト運営者の設定を削除。画面に出る会社は「査定担当会社」の1つだけに戻しました\n・テストメールの宛先を指定できるように（空欄なら自分宛て）。宛先はURLに残しません"
+    "changelog": "1.14.1\n・担当者への通知メールから「管理画面『訪問査定申込 → 申込一覧』からも確認できます。」の一文を削除"
   }
 }
